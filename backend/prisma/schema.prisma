@@ -32,11 +32,15 @@ model commande_produit {
 model communication {
   id_communication String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   id_contact       String?   @db.Uuid
+  id_utilisateur   String?   @db.Uuid 
   canal            String?   @default("Email") @db.VarChar(50)
   objet_email      String?   @db.VarChar(255)
+  corps_email      String?   @db.Text
   taux_ouverture   Decimal?  @db.Decimal(5, 2)
   date_envoi       DateTime? @default(now()) @db.Timestamp(6)
-  contact          contact?  @relation(fields: [id_contact], references: [id_contact], onDelete: Cascade, onUpdate: NoAction)
+  
+  contact          contact?     @relation(fields: [id_contact], references: [id_contact], onDelete: Cascade, onUpdate: NoAction)
+  utilisateur      utilisateur? @relation(fields: [id_utilisateur], references: [id_utilisateur])
 }
 
 model contact {
@@ -50,11 +54,10 @@ model contact {
   id_entreprise   String?         @db.Uuid
   date_creation   DateTime?       @default(now()) @db.Timestamp(6)
   commande        commande[]
-  communication   communication[]
   entreprise      entreprise?     @relation(fields: [id_entreprise], references: [id_entreprise], onUpdate: NoAction)
   lead            lead[]
   tache           tache[]
-
+  communication   communication[]
 }
 
 model entreprise {
@@ -119,4 +122,13 @@ model utilisateur {
   date_creation  DateTime? @default(now()) @db.Timestamp(6)
   lead           lead[]
   tache          tache[]
+  communication  communication[]
+}
+
+model modele_email {
+  id_modele     String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nom_modele    String   @db.VarChar(255) // ex: "Relance Paiement"
+  sujet         String   @db.VarChar(255) // ex: "Votre commande en attente"
+  corps         String   @db.Text         // Le contenu du message
+  date_creation DateTime @default(now()) @db.Timestamp(6)
 }

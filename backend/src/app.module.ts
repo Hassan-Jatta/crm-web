@@ -7,9 +7,11 @@ import { UtilisateursModule } from './utilisateurs/utilisateurs.module';
 import { EntreprisesModule } from './entreprises/entreprises.module';
 import { LeadsModule } from './leads/leads.module';
 import { TachesModule } from './taches/taches.module';
+import { CommunicationsModule } from './communications/communications.module';
+import { ModelesEmailModule } from './modeles-email/modeles-email.module';
 
 @Module({
-  imports: [PrismaModule, ContactsModule, UtilisateursModule, EntreprisesModule, LeadsModule, TachesModule],
+  imports: [PrismaModule, ContactsModule, UtilisateursModule, EntreprisesModule, LeadsModule, TachesModule, CommunicationsModule, ModelesEmailModule],
   controllers: [AppController],
   providers: [AppService],
 })
