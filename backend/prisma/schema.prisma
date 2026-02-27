@@ -53,6 +53,8 @@ model contact {
   communication   communication[]
   entreprise      entreprise?     @relation(fields: [id_entreprise], references: [id_entreprise], onUpdate: NoAction)
   lead            lead[]
+  tache           tache[]
+
 }
 
 model entreprise {
@@ -74,6 +76,7 @@ model lead {
   date_creation  DateTime?    @default(now()) @db.Timestamp(6)
   contact        contact?     @relation(fields: [id_contact], references: [id_contact], onDelete: Cascade, onUpdate: NoAction)
   utilisateur    utilisateur? @relation(fields: [id_utilisateur], references: [id_utilisateur], onUpdate: NoAction)
+  tache          tache[]
 }
 
 model produit {
@@ -87,13 +90,23 @@ model produit {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model tache {
-  id_tache       String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  id_utilisateur String?      @db.Uuid
-  titre          String       @db.VarChar(255)
-  date_echeance  DateTime?    @db.Timestamp(6)
-  statut         String?      @db.VarChar(50)
-  date_creation  DateTime?    @default(now()) @db.Timestamp(6)
-  utilisateur    utilisateur? @relation(fields: [id_utilisateur], references: [id_utilisateur], onDelete: Cascade, onUpdate: NoAction)
+  id_tache       String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  titre          String    @db.VarChar(255)
+  description    String?   @db.Text
+  date_echeance  DateTime  @db.Timestamp(6)
+  statut         String    @default("À faire") @db.VarChar(50) // "À faire", "Terminé"
+  type_tache     String    @db.VarChar(50) // "Appel", "Email", "Rendez-vous", "Rappel"
+  
+  // Relations (À qui est assignée la tâche, et quel client/lead est concerné)
+  id_utilisateur String?   @db.Uuid
+  id_contact     String?   @db.Uuid
+  id_lead        String?   @db.Uuid
+
+  utilisateur    utilisateur? @relation(fields: [id_utilisateur], references: [id_utilisateur])
+  contact        contact?     @relation(fields: [id_contact], references: [id_contact])
+  lead           lead?        @relation(fields: [id_lead], references: [id_lead])
+
+  date_creation  DateTime  @default(now()) @db.Timestamp(6)
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.

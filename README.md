@@ -1,8 +1,8 @@
-# 👟 [Nom de ton CRM] - CRM Web Full SaaS pour la revente de Sneakers
+# 👟 Kicks - CRM Web Full SaaS pour la revente de Sneakers
 
-Bienvenue sur le dépôt officiel de **[Nom de ton CRM]**, une application web full-stack développée dans le cadre de notre projet de création d'un CRM moderne orienté Communication Digitale. 
+Bienvenue sur le dépôt officiel de **Kicks**, une application web full-stack développée dans le cadre de notre projet de création d'un CRM moderne orienté Communication Digitale. 
 
-Ce CRM est spécialement conçu pour une entreprise spécialisée dans la vente, permettant de centraliser les données clients, de gérer un pipeline de ventes sur-mesure et d'automatiser les campagnes marketing.
+Ce CRM est spécialement conçu pour une entreprise spécialisée dans la vente de sneakers, permettant de centraliser les données clients, de gérer un pipeline de ventes sur-mesure et d'automatiser les campagnes marketing.
 
 ---
 
