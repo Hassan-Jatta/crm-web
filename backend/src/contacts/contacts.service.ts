@@ -11,7 +11,7 @@ export class ContactsService {
   // POST : Créer un nouveau contact
   create(createContactDto: CreateContactDto) {
     return this.prisma.contact.create({
-      data: createContactDto as any, // "as any" temporaire en attendant de typer le DTO
+      data: createContactDto
     });
   }
 
@@ -23,15 +23,15 @@ export class ContactsService {
   // GET : Récupérer UN SEUL contact par son ID
   findOne(id: string) {
     return this.prisma.contact.findUnique({
-      where: { id_contact: id }, // Note: si ton ID est un Int (nombre), il faudra mettre Number(id)
+      where: { id_contact: id }, 
     });
   }
 
   // PATCH : Mettre à jour un contact
-  update(id: string, updateContactDto: UpdateContactDto) {
+  update(id: string, updateContactDto: any) {
     return this.prisma.contact.update({
       where: { id_contact: id },
-      data: updateContactDto as any,
+      data: updateContactDto
     });
   }
 

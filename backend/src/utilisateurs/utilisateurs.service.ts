@@ -1,12 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { CreateUtilisateurDto } from './dto/create-utilisateur.dto';
 
 @Injectable()
 export class UtilisateursService {
   constructor(private prisma: PrismaService) {}
 
   // POST : Création du profil après l'inscription Supabase
-  create(createUtilisateurDto: any) {
+  create(createUtilisateurDto: CreateUtilisateurDto) {
     return this.prisma.utilisateur.create({
       data: {
         nom_prenom: createUtilisateurDto.nom_prenom || 'Nouvel Utilisateur',

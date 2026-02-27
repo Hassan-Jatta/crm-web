@@ -23,7 +23,7 @@ export class ContactsController {
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateContactDto: UpdateContactDto) {
+  update(@Param('id') id: string, @Body() updateContactDto: any) {
     return this.contactsService.update(id, updateContactDto);
   }
 
