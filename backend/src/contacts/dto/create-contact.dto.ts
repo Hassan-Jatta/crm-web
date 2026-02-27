@@ -5,4 +5,5 @@ export class CreateContactDto {
   telephone?: string;
   pointure?: number;
   marque_preferee?: string;
+  id_entreprise?: string;
 }

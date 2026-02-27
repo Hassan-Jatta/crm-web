@@ -2,6 +2,11 @@
 
 import { useEffect, useState } from 'react';
 
+interface Entreprise {
+  id_entreprise: string;
+  nom_societe: string;
+}
+
 interface Contact {
   id_contact: string;
   nom: string;
@@ -10,10 +15,13 @@ interface Contact {
   telephone?: string;
   pointure?: number;
   marque_preferee?: string;
+  id_entreprise?: string;
+  entreprise?: { nom_societe: string };
 }
 
 export default function ContactsPage() {
   const [contacts, setContacts] = useState<Contact[]>([]);
+  const [entreprises, setEntreprises] = useState<Entreprise[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [recherche, setRecherche] = useState('');
@@ -25,17 +33,21 @@ export default function ContactsPage() {
   const [telephone, setTelephone] = useState('');
   const [pointure, setPointure] = useState('');
   const [marque, setMarque] = useState('');
+  const [idEntreprise, setIdEntreprise] = useState(''); 
   const [formMessage, setFormMessage] = useState('');
-  
-  // Mémorise si on est en train de modifier un contact (et lequel)
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  const fetchContacts = async () => {
+  const fetchData = async () => {
     try {
-      const response = await fetch('http://localhost:4000/contacts');
-      if (!response.ok) throw new Error('Erreur de récupération');
-      const data = await response.json();
-      setContacts(data);
+      const [resContacts, resEntreprises] = await Promise.all([
+        fetch('http://localhost:4000/contacts'),
+        fetch('http://localhost:4000/entreprises')
+      ]);
+      
+      if (!resContacts.ok || !resEntreprises.ok) throw new Error('Erreur de récupération');
+      
+      setContacts(await resContacts.json());
+      setEntreprises(await resEntreprises.json());
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -44,64 +56,53 @@ export default function ContactsPage() {
   };
 
   useEffect(() => {
-    fetchContacts();
+    fetchData();
   }, []);
 
-  // Cette fonction gère l'ajout et la modification
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormMessage(editingId ? 'Modification en cours...' : 'Ajout en cours...');
 
     const contactData = {
-      nom,
-      prenom,
-      email,
+      nom, prenom, email,
       telephone: telephone || null,
       pointure: pointure ? parseFloat(pointure) : null,
       marque_preferee: marque || null,
+      id_entreprise: idEntreprise || null,
     };
 
     try {
-      // Si editingId existe, on fait un PATCH (Modifier), sinon un POST (Ajouter)
       const url = editingId ? `http://localhost:4000/contacts/${editingId}` : 'http://localhost:4000/contacts';
-      const method = editingId ? 'PATCH' : 'POST';
-
       const response = await fetch(url, {
-        method: method,
+        method: editingId ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(contactData),
       });
 
       if (!response.ok) throw new Error("Erreur lors de l'enregistrement.");
-
       setFormMessage(editingId ? '✅ Contact modifié !' : '✅ Contact ajouté !');
-      
-      // On vide le formulaire et on sort du mode édition
       resetForm();
-      fetchContacts(); 
-      
+      fetchData(); 
     } catch (err: any) {
       setFormMessage(`❌ Erreur : ${err.message}`);
     }
   };
 
-  // 🟢 NOUVEAU : Fonction pour remplir le formulaire quand on clique sur "Modifier"
   const handleEditClick = (contact: Contact) => {
     setEditingId(contact.id_contact);
-    setNom(contact.nom);
-    setPrenom(contact.prenom);
-    setEmail(contact.email);
+    setNom(contact.nom); setPrenom(contact.prenom); setEmail(contact.email);
     setTelephone(contact.telephone || '');
     setPointure(contact.pointure ? contact.pointure.toString() : '');
     setMarque(contact.marque_preferee || '');
+    setIdEntreprise(contact.id_entreprise || '');
     setFormMessage('');
-    window.scrollTo({ top: 0, behavior: 'smooth' }); // Remonte la page tout en haut
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Fonction pour vider le formulaire et annuler la modification
   const resetForm = () => {
     setEditingId(null);
-    setNom(''); setPrenom(''); setEmail(''); setTelephone(''); setPointure(''); setMarque('');
+    setNom(''); setPrenom(''); setEmail(''); setTelephone(''); 
+    setPointure(''); setMarque(''); setIdEntreprise('');
   };
 
   const handleDeleteContact = async (id: string) => {
@@ -121,7 +122,7 @@ export default function ContactsPage() {
       contact.nom.toLowerCase().includes(texteRecherche) ||
       contact.prenom.toLowerCase().includes(texteRecherche) ||
       contact.email.toLowerCase().includes(texteRecherche) ||
-      (contact.marque_preferee && contact.marque_preferee.toLowerCase().includes(texteRecherche))
+      (contact.entreprise && contact.entreprise.nom_societe.toLowerCase().includes(texteRecherche)) // 🟢 On peut même chercher par nom d'entreprise !
     );
   });
 
@@ -129,84 +130,63 @@ export default function ContactsPage() {
     <div style={{ padding: '40px', fontFamily: 'sans-serif', maxWidth: '800px', margin: '0 auto' }}>
       <h1>📇 Gestion des Contacts</h1>
 
-      {/* --- FORMULAIRE --- */}
-      <div style={{ background: editingId ? '#e6f2ff' : '#f5f5f5', padding: '20px', borderRadius: '8px', marginBottom: '30px', border: editingId ? '2px solid #0066cc' : 'none' }}>
+      <div style={{ background: editingId ? '#e6f2ff' : '#f5f5f5', padding: '20px', borderRadius: '8px', marginBottom: '30px' }}>
         <h3>{editingId ? '✏️ Modifier le client' : '➕ Ajouter un nouveau client'}</h3>
         
         <form onSubmit={handleSubmit} style={{ display: 'grid', gap: '10px', gridTemplateColumns: '1fr 1fr' }}>
           <input type="text" placeholder="Prénom" value={prenom} onChange={(e) => setPrenom(e.target.value)} required style={{ padding: '8px' }}/>
           <input type="text" placeholder="Nom" value={nom} onChange={(e) => setNom(e.target.value)} required style={{ padding: '8px' }}/>
-          <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required style={{ padding: '8px', gridColumn: '1 / -1' }} disabled={editingId !== null} />
-          <input type="tel" placeholder="Téléphone (optionnel)" value={telephone} onChange={(e) => setTelephone(e.target.value)} style={{ padding: '8px' }}/>
+          <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required disabled={editingId !== null} style={{ padding: '8px', gridColumn: '1 / -1' }} />
+          
+          {/* MENU DÉROULANT DES ENTREPRISES */}
+          <select value={idEntreprise} onChange={(e) => setIdEntreprise(e.target.value)} style={{ padding: '8px', gridColumn: '1 / -1' }}>
+            <option value="">-- Aucune entreprise (Client particulier) --</option>
+            {entreprises.map(ent => (
+              <option key={ent.id_entreprise} value={ent.id_entreprise}>{ent.nom_societe}</option>
+            ))}
+          </select>
+
+          <input type="tel" placeholder="Téléphone" value={telephone} onChange={(e) => setTelephone(e.target.value)} style={{ padding: '8px' }}/>
           <input type="number" step="0.5" placeholder="Pointure (ex: 42.5)" value={pointure} onChange={(e) => setPointure(e.target.value)} style={{ padding: '8px' }}/>
-          <input type="text" placeholder="Marque préférée (optionnel)" value={marque} onChange={(e) => setMarque(e.target.value)} style={{ padding: '8px', gridColumn: '1 / -1' }}/>
+          <input type="text" placeholder="Marque préférée" value={marque} onChange={(e) => setMarque(e.target.value)} style={{ padding: '8px', gridColumn: '1 / -1' }}/>
           
           <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '10px' }}>
             <button type="submit" style={{ flex: 1, padding: '10px', background: editingId ? '#0066cc' : 'black', color: 'white', border: 'none', cursor: 'pointer', borderRadius: '5px' }}>
-              {editingId ? 'Mettre à jour le contact' : 'Sauvegarder le contact'}
+              {editingId ? 'Mettre à jour' : 'Sauvegarder'}
             </button>
-            
-            {/* Bouton Annuler (visible uniquement si on modifie) */}
             {editingId && (
-              <button type="button" onClick={resetForm} style={{ padding: '10px', background: '#ccc', color: 'black', border: 'none', cursor: 'pointer', borderRadius: '5px' }}>
-                Annuler
-              </button>
+              <button type="button" onClick={resetForm} style={{ padding: '10px', background: '#ccc', border: 'none', cursor: 'pointer', borderRadius: '5px' }}>Annuler</button>
             )}
           </div>
         </form>
         {formMessage && <p style={{ marginTop: '10px', fontWeight: 'bold' }}>{formMessage}</p>}
       </div>
 
-      <input 
-        type="text" 
-        placeholder="🔍 Rechercher un client (nom, email, marque...)" 
-        value={recherche}
-        onChange={(e) => setRecherche(e.target.value)}
-        style={{ width: '100%', padding: '12px', marginBottom: '20px', borderRadius: '5px', border: '1px solid #ccc', fontSize: '16px' }}
-      />
+      <input type="text" placeholder="🔍 Rechercher un client..." value={recherche} onChange={(e) => setRecherche(e.target.value)} style={{ width: '100%', padding: '12px', marginBottom: '20px', borderRadius: '5px', border: '1px solid #ccc' }} />
 
       <h3>Liste de mes clients ({contactsFiltres.length})</h3>
-      {loading && <p>Chargement...</p>}
-      {error && <p style={{ color: 'red' }}>{error}</p>}
       
       <div style={{ display: 'grid', gap: '15px' }}>
         {contactsFiltres.map((contact) => (
           <div key={contact.id_contact} style={{ border: '1px solid #ddd', padding: '15px', borderRadius: '5px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
               <strong>{contact.prenom} {contact.nom}</strong> 
-              <br />✉️ {contact.email} {contact.telephone && `| 📞 ${contact.telephone}`}
-              {(contact.pointure || contact.marque_preferee) && (
-                <p style={{ margin: '5px 0 0 0', fontSize: '14px', color: '#555' }}>
-                  👟 Pointure: {contact.pointure || '?'} | ❤️ Marque: {contact.marque_preferee || '?'}
-                </p>
-              )}
-            </div>
-
-            {/* LES BOUTONS D'ACTION */}
-            <div style={{ display: 'flex', gap: '10px' }}>
-
-              <button 
-                onClick={() => window.location.href = `/contacts/${contact.id_contact}`}
-                style={{ background: '#4CAF50', color: 'white', border: 'none', padding: '8px 12px', borderRadius: '5px', cursor: 'pointer' }}
-              >
-                Voir la fiche
-              </button>
-
-              <button 
-                onClick={() => handleEditClick(contact)}
-                style={{ background: '#f0ad4e', color: 'white', border: 'none', padding: '8px 12px', borderRadius: '5px', cursor: 'pointer' }}
-              >
-                Modifier
-              </button>
               
-              <button 
-                onClick={() => handleDeleteContact(contact.id_contact)}
-                style={{ background: '#ff4444', color: 'white', border: 'none', padding: '8px 12px', borderRadius: '5px', cursor: 'pointer' }}
-              >
-                Supprimer
-              </button>
+              {/* On affiche le nom de l'entreprise s'il y en a une */}
+              {contact.entreprise && (
+                <span style={{ marginLeft: '10px', background: '#e0e0e0', padding: '3px 8px', borderRadius: '12px', fontSize: '12px' }}>
+                  🏢 {contact.entreprise.nom_societe}
+                </span>
+              )}
+
+              <br />✉️ {contact.email} {contact.telephone && `| 📞 ${contact.telephone}`}
             </div>
 
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button onClick={() => window.location.href = `/contacts/${contact.id_contact}`} style={{ background: '#4CAF50', color: 'white', border: 'none', padding: '8px 12px', borderRadius: '5px', cursor: 'pointer' }}>Fiche</button>
+              <button onClick={() => handleEditClick(contact)} style={{ background: '#f0ad4e', color: 'white', border: 'none', padding: '8px 12px', borderRadius: '5px', cursor: 'pointer' }}>Modifier</button>
+              <button onClick={() => handleDeleteContact(contact.id_contact)} style={{ background: '#ff4444', color: 'white', border: 'none', padding: '8px 12px', borderRadius: '5px', cursor: 'pointer' }}>Supprimer</button>
+            </div>
           </div>
         ))}
       </div>

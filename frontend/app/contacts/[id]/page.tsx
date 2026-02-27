@@ -12,10 +12,11 @@ interface Contact {
   pointure?: number;
   marque_preferee?: string;
   date_creation: string;
+  entreprise?: { nom_societe: string };
 }
 
 export default function ContactDetailPage() {
-  const { id } = useParams(); // Récupère l'ID dans l'URL !
+  const { id } = useParams(); 
   const router = useRouter();
   const [contact, setContact] = useState<Contact | null>(null);
   const [loading, setLoading] = useState(true);
@@ -58,7 +59,7 @@ export default function ContactDetailPage() {
             <h3 style={{ margin: '0 0 10px 0', color: '#333' }}>📞 Coordonnées</h3>
             <p><strong>Email :</strong> {contact.email}</p>
             <p><strong>Téléphone :</strong> {contact.telephone || 'Non renseigné'}</p>
-            <p><strong>Entreprise :</strong> 🏢 Bientôt lié à la Phase 3</p>
+            <p><strong>Entreprise :</strong> 🏢 {contact.entreprise ? contact.entreprise.nom_societe : 'Client particulier'}</p>
           </div>
 
           <div style={{ background: '#f9f9f9', padding: '15px', borderRadius: '8px' }}>

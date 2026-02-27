@@ -17,13 +17,16 @@ export class ContactsService {
 
   // GET : Récupérer TOUS les contacts
   findAll() {
-    return this.prisma.contact.findMany();
+    return this.prisma.contact.findMany({
+      include: { entreprise: true }, 
+    });
   }
 
-  // GET : Récupérer UN SEUL contact par son ID
+  // GET : Récupérer un contact par son id
   findOne(id: string) {
     return this.prisma.contact.findUnique({
-      where: { id_contact: id }, 
+      where: { id_contact: id },
+      include: { entreprise: true }, 
     });
   }
 
