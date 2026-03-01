@@ -1,28 +1,32 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useAuth } from '../context/AuthContext';
 
 interface Contact { id_contact: string; nom: string; prenom: string; }
 interface Utilisateur { id_utilisateur: string; nom_prenom: string; role: string; }
+interface Lead { id_lead: string; id_contact?: string; id_utilisateur?: string; statut: string; source?: string; montant_estime?: number; contact?: Contact; utilisateur?: Utilisateur; }
 
-interface Lead {
-  id_lead: string;
-  id_contact?: string;
-  id_utilisateur?: string;
-  statut: string;
-  source?: string;
-  montant_estime?: number;
-  contact?: Contact;
-  utilisateur?: Utilisateur;
-}
+const COLONNES = [
+  'Nouveau lead', 
+  'Qualification', 
+  'Proposition', 
+  'Négociation', 
+  'Paiement en attente', 
+  'Gagné', 
+  'Perdu'
+];
 
 export default function LeadsPage() {
+  const { user } = useAuth();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [utilisateurs, setUtilisateurs] = useState<Utilisateur[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const [recherche, setRecherche] = useState('');
+  
+  const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   // États du formulaire
   const [idContact, setIdContact] = useState('');
@@ -30,200 +34,213 @@ export default function LeadsPage() {
   const [statut, setStatut] = useState('Nouveau lead');
   const [source, setSource] = useState('');
   const [montant, setMontant] = useState('');
-  
-  const [formMessage, setFormMessage] = useState('');
-  const [editingId, setEditingId] = useState<string | null>(null);
 
   const fetchData = async () => {
     try {
-      // 🟢 On charge les 3 listes en même temps !
       const [resLeads, resContacts, resUtilisateurs] = await Promise.all([
         fetch('http://localhost:4000/leads'),
         fetch('http://localhost:4000/contacts'),
         fetch('http://localhost:4000/utilisateurs')
       ]);
-      
-      if (!resLeads.ok || !resContacts.ok || !resUtilisateurs.ok) throw new Error('Erreur réseau');
-      
       setLeads(await resLeads.json());
       setContacts(await resContacts.json());
       setUtilisateurs(await resUtilisateurs.json());
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
+    } catch (err) { console.error(err); } 
+    finally { setLoading(false); }
   };
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  useEffect(() => { fetchData(); }, []);
 
+  // --- SOUMISSION DU FORMULAIRE ---
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setFormMessage(editingId ? 'Modification...' : 'Ajout...');
-
     const leadData = {
       id_contact: idContact || null,
       id_utilisateur: idUtilisateur || null,
-      statut: statut,
-      source: source || null,
-      montant_estime: montant ? parseFloat(montant) : null,
+      statut, source: source || null, montant_estime: montant ? parseFloat(montant) : null,
     };
 
-    try {
-      const url = editingId ? `http://localhost:4000/leads/${editingId}` : 'http://localhost:4000/leads';
-      const response = await fetch(url, {
-        method: editingId ? 'PATCH' : 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(leadData),
-      });
+    const url = editingId ? `http://localhost:4000/leads/${editingId}` : 'http://localhost:4000/leads';
+    await fetch(url, {
+      method: editingId ? 'PATCH' : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(leadData),
+    });
 
-      if (!response.ok) throw new Error("Erreur de sauvegarde.");
-      setFormMessage(editingId ? '✅ Lead mis à jour !' : '✅ Lead créé !');
-      resetForm();
-      fetchData(); 
-    } catch (err: any) {
-      setFormMessage(`❌ Erreur : ${err.message}`);
-    }
+    resetForm();
+    setShowForm(false);
+    fetchData(); 
   };
 
   const handleEditClick = (lead: Lead) => {
-    setEditingId(lead.id_lead);
-    setIdContact(lead.id_contact || '');
-    setIdUtilisateur(lead.id_utilisateur || '');
-    setStatut(lead.statut);
-    setSource(lead.source || '');
-    setMontant(lead.montant_estime ? lead.montant_estime.toString() : '');
-    setFormMessage('');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setEditingId(lead.id_lead); setIdContact(lead.id_contact || ''); setIdUtilisateur(lead.id_utilisateur || '');
+    setStatut(lead.statut); setSource(lead.source || ''); setMontant(lead.montant_estime ? lead.montant_estime.toString() : '');
+    setShowForm(true);
   };
 
   const resetForm = () => {
-    setEditingId(null);
-    setIdContact(''); setIdUtilisateur(''); setStatut('Nouveau'); setSource(''); setMontant('');
+    setEditingId(null); setIdContact(''); setIdUtilisateur(''); setStatut('Nouveau lead'); setSource(''); setMontant('');
   };
 
   const handleDelete = async (id: string) => {
     if (!window.confirm("Supprimer cette opportunité ?")) return;
-    try {
-      await fetch(`http://localhost:4000/leads/${id}`, { method: 'DELETE' });
-      setLeads(leads.filter(l => l.id_lead !== id));
-    } catch (err: any) {
-      alert("Erreur de suppression");
+    await fetch(`http://localhost:4000/leads/${id}`, { method: 'DELETE' });
+    setLeads(leads.filter(l => l.id_lead !== id));
+  };
+
+  // --- LOGIQUE DU GLISSER-DÉPOSER (DRAG & DROP) 🟢 ---
+  const handleDragStart = (e: React.DragEvent, id_lead: string) => {
+    e.dataTransfer.setData('lead_id', id_lead);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault(); // Nécessaire pour autoriser le "drop"
+  };
+
+  const handleDrop = async (e: React.DragEvent, nouveauStatut: string) => {
+    e.preventDefault();
+    const id_lead = e.dataTransfer.getData('lead_id');
+    if (!id_lead) return;
+
+    // 1. Mise à jour visuelle instantanée (Optimistic UI)
+    setLeads(leads.map(lead => lead.id_lead === id_lead ? { ...lead, statut: nouveauStatut } : lead));
+
+    // 2. Mise à jour dans la base de données
+    await fetch(`http://localhost:4000/leads/${id_lead}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ statut: nouveauStatut })
+    });
+  };
+
+  // --- DESIGN DES COLONNES ---
+  const getHeaderColor = (statut: string) => {
+    switch(statut) {
+      case 'Nouveau lead': return '#2196F3'; // Bleu
+      case 'Qualification': return '#03A9F4'; // Bleu clair
+      case 'Proposition': return '#9C27B0'; // Violet
+      case 'Négociation': return '#FF9800'; // Orange
+      case 'Paiement en attente': return '#FFC107'; // Jaune
+      case 'Gagné': return '#4CAF50'; // Vert
+      case 'Perdu': return '#F44336'; // Rouge
+      default: return '#9E9E9E';
     }
   };
 
-  // Fonction pour colorer les statuts
-  const getStatutStyle = (statut: string) => {
-    switch(statut.toLowerCase()) {
-      case 'nouveau lead': return { bg: '#e3f2fd', color: '#1565c0' }; // Bleu très clair
-      case 'qualification': return { bg: '#bbdefb', color: '#0d47a1' }; // Bleu moyen
-      case 'proposition': return { bg: '#e1bee7', color: '#4a148c' }; // Violet
-      case 'négociation': return { bg: '#ffe0b2', color: '#e65100' }; // Orange
-      case 'paiement en attente': return { bg: '#fff9c4', color: '#f57f17' }; // Jaune
-      case 'gagné': return { bg: '#c8e6c9', color: '#1b5e20' }; // Vert
-      case 'perdu': return { bg: '#ffcdd2', color: '#b71c1c' }; // Rouge
-      default: return { bg: '#f5f5f5', color: '#333' };
-    }
-  };
+  const leadsFiltres = leads.filter(l => 
+    l.source?.toLowerCase().includes(recherche.toLowerCase()) || 
+    l.contact?.nom.toLowerCase().includes(recherche.toLowerCase()) ||
+    l.contact?.prenom.toLowerCase().includes(recherche.toLowerCase())
+  );
 
-  const leadsFiltres = leads.filter((lead) => {
-    const txt = recherche.toLowerCase();
-    return (
-      lead.statut.toLowerCase().includes(txt) ||
-      (lead.source && lead.source.toLowerCase().includes(txt)) ||
-      (lead.contact && `${lead.contact.prenom} ${lead.contact.nom}`.toLowerCase().includes(txt)) ||
-      (lead.utilisateur && lead.utilisateur.nom_prenom.toLowerCase().includes(txt))
-    );
-  });
+  if (loading) return <p style={{ padding: '40px' }}>Chargement du Pipeline...</p>;
 
   return (
-    <div style={{ padding: '40px', fontFamily: 'sans-serif', maxWidth: '900px', margin: '0 auto' }}>
-      <h1>🎯 Gestion des Opportunités (Leads)</h1>
-
-      {/* --- FORMULAIRE --- */}
-      <div style={{ background: editingId ? '#e6f2ff' : '#f5f5f5', padding: '20px', borderRadius: '8px', marginBottom: '30px', border: editingId ? '2px solid #0066cc' : 'none' }}>
-        <h3>{editingId ? '✏️ Modifier l\'opportunité' : '➕ Nouvelle Opportunité'}</h3>
-        
-        <form onSubmit={handleSubmit} style={{ display: 'grid', gap: '15px', gridTemplateColumns: '1fr 1fr' }}>
-          
-          <select value={idContact} onChange={(e) => setIdContact(e.target.value)} required style={{ padding: '10px' }}>
-            <option value="">-- Choisir un Client --</option>
-            {contacts.map(c => <option key={c.id_contact} value={c.id_contact}>{c.prenom} {c.nom}</option>)}
-          </select>
-
-          <select value={idUtilisateur} onChange={(e) => setIdUtilisateur(e.target.value)} style={{ padding: '10px' }}>
-            <option value="">-- Assigner un Commercial --</option>
-            {utilisateurs.map(u => <option key={u.id_utilisateur} value={u.id_utilisateur}>{u.nom_prenom} ({u.role})</option>)}
-          </select>
-
-          <select value={statut} onChange={(e) => setStatut(e.target.value)} required style={{ padding: '10px' }}>
-            <option value="Nouveau lead">Nouveau lead</option>
-            <option value="Qualification">Qualification</option>
-            <option value="Proposition">Proposition</option>
-            <option value="Négociation">Négociation</option>
-            <option value="Paiement en attente">Paiement en attente</option>
-            <option value="Gagné">Gagné</option>
-            <option value="Perdu">Perdu</option>
-          </select>
-
-          <input type="number" placeholder="Montant estimé (€)" value={montant} onChange={(e) => setMontant(e.target.value)} style={{ padding: '10px' }}/>
-          
-          <input type="text" placeholder="Source (ex: Instagram, Recommandation...)" value={source} onChange={(e) => setSource(e.target.value)} style={{ padding: '10px', gridColumn: '1 / -1' }}/>
-          
-          <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '10px' }}>
-            <button type="submit" style={{ flex: 1, padding: '10px', background: editingId ? '#0066cc' : 'black', color: 'white', border: 'none', cursor: 'pointer', borderRadius: '5px' }}>
-              {editingId ? 'Mettre à jour' : 'Créer l\'opportunité'}
-            </button>
-            {editingId && <button type="button" onClick={resetForm} style={{ padding: '10px', background: '#ccc', borderRadius: '5px' }}>Annuler</button>}
-          </div>
-        </form>
-        {formMessage && <p style={{ marginTop: '10px', fontWeight: 'bold' }}>{formMessage}</p>}
+    <div style={{ padding: '30px 40px', paddingLeft: '60px', boxSizing: 'border-box', fontFamily: 'sans-serif', height: '100vh', display: 'flex', flexDirection: 'column' }}>
+      
+      {/* HEADER & ACTIONS */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+        <div>
+          <h1 style={{ margin: '0 0 5px 0' }}>🎯 Pipeline des Ventes</h1>
+          <p style={{ margin: 0, color: '#666' }}>Glissez et déposez les cartes pour faire avancer vos opportunités.</p>
+        </div>
+        <div style={{ display: 'flex', gap: '15px' }}>
+          <input type="text" placeholder="🔍 Rechercher..." value={recherche} onChange={(e) => setRecherche(e.target.value)} style={{ padding: '10px', borderRadius: '5px', border: '1px solid #ccc', minWidth: '250px' }} />
+          <button onClick={() => { resetForm(); setShowForm(!showForm); }} style={{ padding: '10px 20px', background: showForm ? '#ccc' : 'black', color: showForm ? 'black' : 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>
+            {showForm ? '❌ Fermer' : '➕ Nouvelle Opportunité'}
+          </button>
+        </div>
       </div>
 
-      <input type="text" placeholder="🔍 Rechercher (statut, client, commercial...)" value={recherche} onChange={(e) => setRecherche(e.target.value)} style={{ width: '100%', padding: '12px', marginBottom: '20px', borderRadius: '5px', border: '1px solid #ccc' }} />
+      {/* FORMULAIRE FLOTTANT */}
+      {showForm && (
+        <div style={{ background: 'white', padding: '20px', borderRadius: '8px', marginBottom: '20px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', border: '2px solid #0066cc' }}>
+          <h3 style={{ marginTop: 0 }}>{editingId ? '✏️ Modifier l\'opportunité' : '➕ Créer un deal'}</h3>
+          <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+            <div style={{ flex: 1, minWidth: '200px' }}>
+              <label style={{ fontSize: '0.85rem', color: '#666', marginBottom: '5px', display: 'block' }}>Client *</label>
+              <select value={idContact} onChange={(e) => setIdContact(e.target.value)} required style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #ccc' }}>
+                <option value="">-- Choisir --</option>
+                {contacts.map(c => <option key={c.id_contact} value={c.id_contact}>{c.prenom} {c.nom}</option>)}
+              </select>
+            </div>
+            <div style={{ flex: 1, minWidth: '150px' }}>
+              <label style={{ fontSize: '0.85rem', color: '#666', marginBottom: '5px', display: 'block' }}>Montant estimé (€)</label>
+              <input type="number" value={montant} onChange={(e) => setMontant(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #ccc', boxSizing: 'border-box' }}/>
+            </div>
+            <div style={{ flex: 1, minWidth: '150px' }}>
+              <label style={{ fontSize: '0.85rem', color: '#666', marginBottom: '5px', display: 'block' }}>Source</label>
+              <input type="text" placeholder="Ex: Instagram" value={source} onChange={(e) => setSource(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #ccc', boxSizing: 'border-box' }}/>
+            </div>
+            <div style={{ flex: 1, minWidth: '200px' }}>
+              <label style={{ fontSize: '0.85rem', color: '#666', marginBottom: '5px', display: 'block' }}>Statut initial</label>
+              <select value={statut} onChange={(e) => setStatut(e.target.value)} required style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #ccc' }}>
+                {COLONNES.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+            <button type="submit" style={{ padding: '11px 20px', background: '#0066cc', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>
+              Enregistrer
+            </button>
+          </form>
+        </div>
+      )}
 
-      <h3>Pipeline des ventes ({leadsFiltres.length})</h3>
-      {loading && <p>Chargement...</p>}
-      
-      <div style={{ display: 'grid', gap: '15px' }}>
-        {leadsFiltres.map((lead) => {
-          const style = getStatutStyle(lead.statut);
-          
+      {/* --- LE TABLEAU KANBAN --- */}
+      <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', flex: 1, paddingBottom: '20px' }}>
+        {COLONNES.map(colonne => {
+          const leadsColonne = leadsFiltres.filter(l => l.statut === colonne);
+          const totalArgent = leadsColonne.reduce((sum, l) => sum + (Number(l.montant_estime) || 0), 0);
+
           return (
-            <div key={lead.id_lead} style={{ border: '1px solid #ddd', padding: '15px', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'white', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+            <div 
+              key={colonne} 
+              onDragOver={handleDragOver}
+              onDrop={(e) => handleDrop(e, colonne)}
+              style={{ background: '#e5e7eb', flex: 1, minWidth: '160px', borderRadius: '8px', display: 'flex', flexDirection: 'column', maxHeight: '100%' }}
+            >
+              {/* EN-TÊTE DE COLONNE AFFINÉ */}
+              <div style={{ padding: '10px', background: 'white', borderTop: `4px solid ${getHeaderColor(colonne)}`, borderRadius: '8px 8px 0 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+                <strong style={{ fontSize: '0.85rem', color: '#333', textTransform: 'uppercase', lineHeight: '1.2' }}>{colonne}</strong>
+                <span style={{ background: '#eee', padding: '2px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 'bold' }}>{leadsColonne.length}</span>
+              </div>
               
-              <div>
-                <span style={{ background: style.bg, color: style.color, padding: '4px 10px', borderRadius: '15px', fontSize: '13px', fontWeight: 'bold', textTransform: 'uppercase' }}>
-                  {lead.statut}
-                </span>
-                
-                <h4 style={{ margin: '10px 0 5px 0', fontSize: '1.2rem' }}>
-                  {lead.contact ? `Deal avec ${lead.contact.prenom} ${lead.contact.nom}` : 'Client inconnu'}
-                </h4>
-                
-                <p style={{ margin: 0, color: '#666', fontSize: '14px' }}>
-                  💰 {lead.montant_estime ? `${lead.montant_estime} €` : 'Montant inconnu'} 
-                  {lead.source && ` | 📍 Source : ${lead.source}`}
-                </p>
-                
-                {lead.utilisateur && (
-                  <p style={{ margin: '5px 0 0 0', fontSize: '12px', color: '#888' }}>
-                    👤 Géré par : {lead.utilisateur.nom_prenom}
-                  </p>
-                )}
-              </div>
+              {totalArgent > 0 && (
+                <div style={{ padding: '6px 10px', background: '#f9fafb', fontSize: '0.8rem', color: '#666', borderBottom: '1px solid #ddd', fontWeight: 'bold', textAlign: 'center' }}>
+                  💰 {totalArgent.toFixed(2)} €
+                </div>
+              )}
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <button onClick={() => handleEditClick(lead)} style={{ background: '#f0ad4e', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '5px', cursor: 'pointer' }}>Modifier</button>
-                <button onClick={() => handleDelete(lead.id_lead)} style={{ background: '#ff4444', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '5px', cursor: 'pointer' }}>Supprimer</button>
+              {/* ZONE DES CARTES (DROPPABLE) */}
+              <div style={{ padding: '10px', flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {leadsColonne.map(lead => (
+                  <div 
+                    key={lead.id_lead} 
+                    draggable 
+                    onDragStart={(e) => handleDragStart(e, lead.id_lead)}
+                    style={{ background: 'white', padding: '10px', borderRadius: '6px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', cursor: 'grab', borderLeft: `4px solid ${getHeaderColor(lead.statut)}` }}
+                  >
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', marginBottom: '8px' }}>
+                      <strong style={{ fontSize: '0.9rem', lineHeight: '1.2' }}>{lead.contact ? `${lead.contact.prenom} ${lead.contact.nom}` : 'Client Inconnu'}</strong>
+                      {lead.montant_estime && <span style={{ color: '#0066cc', fontWeight: 'bold', fontSize: '0.85rem' }}>{Number(lead.montant_estime).toFixed(2)} €</span>}
+                    </div>
+                    
+                    {lead.source && <p style={{ margin: '0 0 8px 0', fontSize: '0.75rem', color: '#666' }}>📍 {lead.source}</p>}
+                    
+                    <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #eee', paddingTop: '8px' }}>
+                      <button onClick={() => handleEditClick(lead)} style={{ background: 'none', border: 'none', color: '#f0ad4e', cursor: 'pointer', fontSize: '0.75rem', padding: 0 }}>✏️ Modif</button>
+                      
+                      {user?.role === 'Admin' && (
+                        <button onClick={() => handleDelete(lead.id_lead)} style={{ background: 'none', border: 'none', color: '#ff4444', cursor: 'pointer', fontSize: '0.75rem', padding: 0 }}>❌</button>
+                      )}
+                  </div>
+                  </div>
+                ))}
               </div>
-
             </div>
           );
         })}
       </div>
+
     </div>
   );
 }

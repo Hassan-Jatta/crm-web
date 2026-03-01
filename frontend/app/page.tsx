@@ -1,65 +1,184 @@
-import Image from "next/image";
+'use client';
 
-export default function Home() {
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+
+export default function KicksDashboard() {
+  const router = useRouter();
+  const [loading, setLoading] = useState(true);
+  
+  // KPI
+  const [caMois, setCaMois] = useState(0);
+  const [evolutionCa, setEvolutionCa] = useState(0);
+  const [nouveauxProspects, setNouveauxProspects] = useState(0);
+  const [rdvDuJour, setRdvDuJour] = useState<any[]>([]);
+  const [tachesUrgentes, setTachesUrgentes] = useState<any[]>([]);
+
+  // Objectif fictif pour la démo (ex: 10 000€ par mois)
+  const OBJECTIF_MENSUEL = 10000;
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        const [resCommandes, resLeads, resTaches] = await Promise.all([
+          fetch('http://localhost:4000/commandes'),
+          fetch('http://localhost:4000/leads'),
+          fetch('http://localhost:4000/taches')
+        ]);
+
+        const commandes = await resCommandes.json();
+        const leads = await resLeads.json();
+        const taches = await resTaches.json();
+
+        const now = new Date();
+        const currentMonth = now.getMonth();
+        const currentYear = now.getFullYear();
+        
+        // 1. Calcul du CA du mois en cours (Commandes payées)
+        const caDuMois = commandes
+          .filter((c: any) => c.statut_paiement === 'Payé' && new Date(c.date_commande).getMonth() === currentMonth && new Date(c.date_commande).getFullYear() === currentYear)
+          .reduce((sum: number, c: any) => sum + parseFloat(c.montant_total), 0);
+        setCaMois(caDuMois);
+
+        // 2. Calcul du CA du mois précédent
+        let lastMonth = currentMonth - 1;
+        let yearOfLastMonth = currentYear;
+        if (lastMonth < 0) { lastMonth = 11; yearOfLastMonth -= 1; }
+
+        const caMoisPrecedent = commandes
+          .filter((c: any) => c.statut_paiement === 'Payé' && new Date(c.date_commande).getMonth() === lastMonth && new Date(c.date_commande).getFullYear() === yearOfLastMonth)
+          .reduce((sum: number, c: any) => sum + parseFloat(c.montant_total), 0);
+
+        // 3. Évolution (%)
+        if (caMoisPrecedent === 0) {
+          setEvolutionCa(caDuMois > 0 ? 100 : 0);
+        } else {
+          setEvolutionCa(((caDuMois - caMoisPrecedent) / caMoisPrecedent) * 100);
+        }
+
+        // 4. Nouveaux Prospects (Leads créés ce mois-ci)
+        const prospectsMois = leads.filter((l: any) => new Date(l.date_creation).getMonth() === currentMonth).length;
+        setNouveauxProspects(prospectsMois);
+
+        // 5. RDV du jour
+        now.setHours(0,0,0,0);
+        const rdvAujourdhui = taches.filter((t: any) => {
+          const d = new Date(t.date_echeance);
+          d.setHours(0,0,0,0);
+          return t.statut === 'À faire' && t.type_tache === 'Rendez-vous' && d.getTime() === now.getTime();
+        });
+        setRdvDuJour(rdvAujourdhui);
+
+        // 6. Tâches urgentes (En retard)
+        const urgences = taches.filter((t: any) => t.statut === 'À faire' && new Date(t.date_echeance) < new Date());
+        setTachesUrgentes(urgences);
+
+      } catch (err) {
+        console.error("Erreur chargement dashboard", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, []);
+
+  const pourcentageObjectif = Math.min((caMois / OBJECTIF_MENSUEL) * 100, 100).toFixed(1);
+
+  if (loading) return <div style={{ padding: '40px', textAlign: 'center', fontSize: '1.2rem' }}>Chargement de Kicks... 👟</div>;
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <div style={{ padding: '40px', fontFamily: 'sans-serif', maxWidth: '1200px', margin: '0 auto', background: '#f5f7fa', minHeight: '100vh' }}>
+      
+      {/* HEADER */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px' }}>
+        <div>
+          <h1 style={{ margin: '0 0 5px 0', fontSize: '2.5rem', letterSpacing: '-1px' }}>👟 KICKS <span style={{ fontWeight: 'normal', color: '#666' }}>CRM</span></h1>
+          <p style={{ margin: 0, color: '#888', fontSize: '1.1rem' }}>Bonjour ! Voici un résumé de votre activité.</p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+        
+        {/* MENU RAPIDE */}
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button onClick={() => router.push('/contacts')} style={{ padding: '10px 15px', background: 'white', border: '1px solid #ccc', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>📇 Clients</button>
+          <button onClick={() => router.push('/leads')} style={{ padding: '10px 15px', background: 'white', border: '1px solid #ccc', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>🎯 Pipeline</button>
+          <button onClick={() => router.push('/commandes')} style={{ padding: '10px 15px', background: 'white', border: '1px solid #ccc', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>💳 Caisse</button>
+          <button onClick={() => router.push('/taches')} style={{ padding: '10px 15px', background: 'white', border: '1px solid #ccc', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>📅 Planning</button>
         </div>
-      </main>
+      </div>
+
+      {/* --- KPI PRINCIPAUX (POINT 7 DU CAHIER DES CHARGES) --- */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px', marginBottom: '40px' }}>
+        
+        <div style={{ background: 'white', padding: '25px', borderRadius: '12px', boxShadow: '0 4px 10px rgba(0,0,0,0.03)', borderTop: '4px solid #0066cc' }}>
+          <p style={{ margin: '0 0 10px 0', color: '#666', fontWeight: 'bold', textTransform: 'uppercase', fontSize: '0.85rem' }}>CA du mois</p>
+          <h2 style={{ margin: 0, fontSize: '2.2rem', color: '#0066cc' }}>{caMois.toFixed(2)} €</h2>
+        </div>
+
+        <div style={{ background: 'white', padding: '25px', borderRadius: '12px', boxShadow: '0 4px 10px rgba(0,0,0,0.03)', borderTop: `4px solid ${evolutionCa >= 0 ? '#4CAF50' : '#ff4444'}` }}>
+          <p style={{ margin: '0 0 10px 0', color: '#666', fontWeight: 'bold', textTransform: 'uppercase', fontSize: '0.85rem' }}>Évolution vs Mois préc.</p>
+          <h2 style={{ margin: 0, fontSize: '2.2rem', color: evolutionCa >= 0 ? '#4CAF50' : '#ff4444' }}>
+            {evolutionCa >= 0 ? '↗' : '↘'} {Math.abs(evolutionCa).toFixed(1)} %
+          </h2>
+        </div>
+
+        <div style={{ background: 'white', padding: '25px', borderRadius: '12px', boxShadow: '0 4px 10px rgba(0,0,0,0.03)', borderTop: '4px solid #ff9800' }}>
+          <p style={{ margin: '0 0 10px 0', color: '#666', fontWeight: 'bold', textTransform: 'uppercase', fontSize: '0.85rem' }}>Objectif ({OBJECTIF_MENSUEL}€)</p>
+          <h2 style={{ margin: '0 0 10px 0', fontSize: '2.2rem', color: '#333' }}>{pourcentageObjectif} %</h2>
+          <div style={{ width: '100%', background: '#eee', height: '8px', borderRadius: '4px', overflow: 'hidden' }}>
+            <div style={{ width: `${pourcentageObjectif}%`, background: '#ff9800', height: '100%' }}></div>
+          </div>
+        </div>
+
+        <div style={{ background: 'white', padding: '25px', borderRadius: '12px', boxShadow: '0 4px 10px rgba(0,0,0,0.03)', borderTop: '4px solid #9c27b0' }}>
+          <p style={{ margin: '0 0 10px 0', color: '#666', fontWeight: 'bold', textTransform: 'uppercase', fontSize: '0.85rem' }}>Nouveaux Prospects</p>
+          <h2 style={{ margin: 0, fontSize: '2.2rem', color: '#9c27b0' }}>+{nouveauxProspects}</h2>
+        </div>
+
+      </div>
+
+      {/* --- SECTIONS D'ACTION DU JOUR --- */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px' }}>
+        
+        {/* RDV DU JOUR */}
+        <div style={{ background: 'white', padding: '25px', borderRadius: '12px', boxShadow: '0 4px 10px rgba(0,0,0,0.03)' }}>
+          <h3 style={{ margin: '0 0 20px 0', display: 'flex', alignItems: 'center', gap: '10px' }}>🤝 Rendez-vous du jour ({rdvDuJour.length})</h3>
+          {rdvDuJour.length === 0 ? (
+            <p style={{ color: '#888', fontStyle: 'italic' }}>Aucun rendez-vous prévu aujourd'hui. Profitez-en pour prospecter !</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+              {rdvDuJour.map(rdv => (
+                <div key={rdv.id_tache} style={{ padding: '15px', background: '#f0f7ff', borderLeft: '4px solid #0066cc', borderRadius: '5px' }}>
+                  <strong style={{ display: 'block' }}>{rdv.titre}</strong>
+                  <span style={{ fontSize: '0.9rem', color: '#555' }}>Prévu pour : {new Date(rdv.date_echeance).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* TÂCHES URGENTES */}
+        <div style={{ background: 'white', padding: '25px', borderRadius: '12px', boxShadow: '0 4px 10px rgba(0,0,0,0.03)' }}>
+          <h3 style={{ margin: '0 0 20px 0', display: 'flex', alignItems: 'center', gap: '10px', color: '#ff4444' }}>🚨 Tâches urgentes ({tachesUrgentes.length})</h3>
+          {tachesUrgentes.length === 0 ? (
+            <p style={{ color: '#4CAF50', fontWeight: 'bold' }}>Super ! Vous êtes à jour dans vos relances. ✅</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+              {tachesUrgentes.slice(0, 5).map(tache => (
+                <div key={tache.id_tache} style={{ padding: '15px', background: '#ffebee', borderLeft: '4px solid #ff4444', borderRadius: '5px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <strong style={{ display: 'block' }}>{tache.type_tache === 'Appel' ? '📞' : '✉️'} {tache.titre}</strong>
+                    <span style={{ fontSize: '0.85rem', color: '#d32f2f' }}>Retard depuis le {new Date(tache.date_echeance).toLocaleDateString('fr-FR')}</span>
+                  </div>
+                  <button onClick={() => router.push('/taches')} style={{ padding: '5px 10px', fontSize: '0.8rem', cursor: 'pointer', borderRadius: '5px', border: '1px solid #ff4444', color: '#ff4444', background: 'white' }}>Traiter</button>
+                </div>
+              ))}
+              {tachesUrgentes.length > 5 && <p style={{ textAlign: 'center', fontSize: '0.9rem', color: '#888' }}>+ {tachesUrgentes.length - 5} autres tâches en retard.</p>}
+            </div>
+          )}
+        </div>
+
+      </div>
+
     </div>
   );
 }

@@ -9,15 +9,12 @@ export default function DashboardPage() {
   const router = useRouter();
 
   useEffect(() => {
-    // Cette fonction vérifie si quelqu'un est connecté au chargement de la page
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
-        // Si personne n'est connecté, on le renvoie à la porte (login)
         router.push('/login');
       } else {
-        // Sinon, on récupère son email pour lui dire bonjour
         setUserEmail(session.user.email || '');
       }
     };
@@ -25,7 +22,6 @@ export default function DashboardPage() {
     checkUser();
   }, [router]);
 
-  // Fonction pour se déconnecter
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.push('/login');

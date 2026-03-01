@@ -1,12 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateTacheDto } from './dto/create-tache.dto';
 
 @Injectable()
 export class TachesService {
   constructor(private prisma: PrismaService) {}
 
-  create(createTacheDto: CreateTacheDto) {
+  create(createTacheDto: any) {
     return this.prisma.tache.create({
       data: createTacheDto,
     });
@@ -14,23 +13,15 @@ export class TachesService {
 
   findAll() {
     return this.prisma.tache.findMany({
-      include: {
-        contact: true,     
-        utilisateur: true, 
-        lead: true,     
-      },
       orderBy: { date_echeance: 'asc' },
+      include: { contact: true }
     });
   }
 
   findOne(id: string) {
     return this.prisma.tache.findUnique({
       where: { id_tache: id },
-      include: {
-        contact: true,
-        utilisateur: true,
-        lead: true,
-      },
+      include: { contact: true }
     });
   }
 

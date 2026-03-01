@@ -3,6 +3,13 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 
+interface Communication { id_communication: string; canal: string; objet_email: string; corps_email: string; date_envoi: string; }
+interface Tache { id_tache: string; titre: string; type_tache: string; statut: string; date_echeance: string; }
+interface Lead { id_lead: string; statut: string; source?: string; montant_estime?: number; date_creation: string; }
+interface Produit { marque: string; modele: string; }
+interface CommandeProduit { quantite: number; prix_unitaire_facture: number; produit: Produit; }
+interface Commande { id_commande: string; montant_total: string; statut_paiement: string; date_commande: string; commande_produit: CommandeProduit[]; }
+
 interface Contact {
   id_contact: string;
   nom: string;
@@ -13,14 +20,13 @@ interface Contact {
   marque_preferee?: string;
   date_creation: string;
   entreprise?: { nom_societe: string };
+  communication?: Communication[];
+  tache?: Tache[];
+  lead?: Lead[];
+  commande?: Commande[];
 }
 
-interface ModeleEmail {
-  id_modele: string;
-  nom_modele: string;
-  sujet: string;
-  corps: string;
-}
+interface ModeleEmail { id_modele: string; nom_modele: string; sujet: string; corps: string; }
 
 export default function ContactDetailPage() {
   const { id } = useParams();
@@ -35,41 +41,39 @@ export default function ContactDetailPage() {
   const [envoiEnCours, setEnvoiEnCours] = useState(false);
   const [messageEnvoi, setMessageEnvoi] = useState('');
 
-  useEffect(() => {
-    // 🟢 CORRECTION 1 : Il manquait le mot "return;"
-    if (!id) return;
+  const [titreTache, setTitreTache] = useState('');
+  const [typeTache, setTypeTache] = useState('Appel');
+  const [dateEcheance, setDateEcheance] = useState('');
 
+  const fetchContactSeul = async () => {
+    const resContact = await fetch(`http://localhost:4000/contacts/${id}`);
+    if (resContact.ok) setContact(await resContact.json());
+  };
+
+  useEffect(() => {
+    if (!id) return;
     const fetchDonnees = async () => {
       try {
-        // 🟢 CORRECTION 2 : Les fameux guillemets (backticks) ont été remis
         const [resContact, resModeles] = await Promise.all([
           fetch(`http://localhost:4000/contacts/${id}`),
           fetch(`http://localhost:4000/modeles-email`)
         ]);
-
         if (!resContact.ok) throw new Error('Contact introuvable');
-        
         setContact(await resContact.json());
-        
         if (resModeles.ok) setModeles(await resModeles.json());
-      } catch (err: any) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
+      } catch (err: any) { setError(err.message); } 
+      finally { setLoading(false); }
     };
-
     fetchDonnees();
   }, [id]);
 
+  // --- ACTIONS ---
   const handleModeleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const modeleId = e.target.value;
     if (!modeleId) { setSujet(''); setCorps(''); return; }
-    
     const modeleChoisi = modeles.find(m => m.id_modele === modeleId);
     if (modeleChoisi && contact) {
       setSujet(modeleChoisi.sujet);
-      // 🟢 CORRECTION 3 : Les guillemets (backticks) ont été remis ici aussi
       setCorps(`Bonjour ${contact.prenom},\n\n` + modeleChoisi.corps);
     }
   };
@@ -79,72 +83,189 @@ export default function ContactDetailPage() {
     if (!contact) return;
     setEnvoiEnCours(true);
     setMessageEnvoi('Envoi en cours... ⏳');
-
     try {
       const response = await fetch('http://localhost:4000/communications/envoyer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email_destinataire: contact.email,
-          sujet: sujet,
-          corps: corps,
-          id_contact: contact.id_contact,
-        }),
+        body: JSON.stringify({ email_destinataire: contact.email, sujet, corps, id_contact: contact.id_contact }),
       });
+      if (!response.ok) throw new Error("Échec");
+      setMessageEnvoi('✅ Email envoyé !'); setSujet(''); setCorps('');
+      await fetchContactSeul();
+      setTimeout(() => setMessageEnvoi(''), 3000);
+    } catch (err: any) { setMessageEnvoi(`❌ Erreur : ${err.message}`); } 
+    finally { setEnvoiEnCours(false); }
+  };
 
-      if (!response.ok) throw new Error("Échec de l'envoi");
-      setMessageEnvoi('✅ Email envoyé et enregistré !');
-      setSujet(''); setCorps('');
-    } catch (err: any) {
-      setMessageEnvoi(`❌ Erreur : ${err.message}`);
-    } finally {
-      setEnvoiEnCours(false);
+  const handleAjouterTache = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!contact || !dateEcheance) return;
+    try {
+      await fetch('http://localhost:4000/taches', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ titre: titreTache, type_tache: typeTache, date_echeance: new Date(dateEcheance).toISOString(), statut: 'À faire', id_contact: contact.id_contact }),
+      });
+      setTitreTache(''); setDateEcheance(''); await fetchContactSeul();
+    } catch (err: any) { alert(err.message); }
+  };
+
+  const handleChangerStatutTache = async (idTache: string, statutActuel: string) => {
+    const nouveauStatut = statutActuel === 'À faire' ? 'Terminé' : 'À faire';
+    await fetch(`http://localhost:4000/taches/${idTache}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ statut: nouveauStatut }) });
+    await fetchContactSeul();
+  };
+
+  const handleSupprimerTache = async (idTache: string) => {
+    if (!window.confirm("Supprimer cette tâche ?")) return;
+    await fetch(`http://localhost:4000/taches/${idTache}`, { method: 'DELETE' });
+    await fetchContactSeul();
+  };
+
+  const getStatutStyle = (statut: string) => {
+    switch(statut.toLowerCase()) {
+      case 'nouveau lead': return { bg: '#e3f2fd', color: '#1565c0' };
+      case 'gagné': return { bg: '#c8e6c9', color: '#1b5e20' };
+      case 'perdu': return { bg: '#ffcdd2', color: '#b71c1c' };
+      default: return { bg: '#fff9c4', color: '#f57f17' };
     }
   };
 
   if (loading) return <p style={{ padding: '40px' }}>Chargement de la fiche...</p>;
   if (error || !contact) return <p style={{ padding: '40px', color: 'red' }}>{error || "Contact introuvable"}</p>;
 
-  return (
-    <div style={{ padding: '40px', fontFamily: 'sans-serif', maxWidth: '800px', margin: '0 auto' }}>
-      <button onClick={() => router.push('/contacts')} style={{ marginBottom: '20px', padding: '10px 15px', cursor: 'pointer', background: '#eee', border: 'none', borderRadius: '5px' }}>
-        ⬅ Retour à l'annuaire
-      </button>
+  const tachesAFaire = contact.tache?.filter(t => t.statut === 'À faire') || [];
+  const totalDepense = contact.commande?.filter(c => c.statut_paiement === 'Payé').reduce((sum, cmd) => sum + parseFloat(cmd.montant_total), 0) || 0;
 
-      <div style={{ background: 'white', padding: '30px', borderRadius: '10px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', marginBottom: '30px', border: '1px solid #eaeaea' }}>
+  return (
+    <div style={{ padding: '40px', fontFamily: 'sans-serif', maxWidth: '1000px', margin: '0 auto', background: '#f5f7fa', minHeight: '100vh' }}>
+      
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+        <button onClick={() => router.push('/contacts')} style={{ padding: '10px 15px', cursor: 'pointer', background: 'black', color: 'white', border: 'none', borderRadius: '5px' }}>
+          ⬅ Retour à l'annuaire
+        </button>
+        <button onClick={() => router.push('/commandes')} style={{ padding: '10px 15px', cursor: 'pointer', background: '#0066cc', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold' }}>
+          💳 Aller à la Caisse
+        </button>
+      </div>
+
+      {/* --- INFOS CONTACT --- */}
+      <div style={{ background: 'white', padding: '30px', borderRadius: '10px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', marginBottom: '30px', border: '1px solid #eaeaea', position: 'relative' }}>
+        {totalDepense > 0 && (
+          <div style={{ position: 'absolute', top: '30px', right: '30px', textAlign: 'right' }}>
+            <span style={{ display: 'block', color: '#888', fontSize: '0.9rem', textTransform: 'uppercase', fontWeight: 'bold' }}>Total dépensé</span>
+            <span style={{ fontSize: '2rem', color: '#4CAF50', fontWeight: 'bold' }}>{totalDepense.toFixed(2)} €</span>
+          </div>
+        )}
+        
         <h1 style={{ margin: '0 0 10px 0', fontSize: '2.5rem' }}>{contact.prenom} {contact.nom}</h1>
         <p style={{ color: '#666' }}>Client depuis le {new Date(contact.date_creation).toLocaleDateString('fr-FR')}</p>
         
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '20px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '20px', paddingRight: '150px' }}>
           <div>
             <h3 style={{ margin: '0 0 10px 0' }}>📞 Coordonnées</h3>
-            <p><strong>Entreprise :</strong> 🏢 {contact.entreprise ? contact.entreprise.nom_societe : 'Client particulier'}</p>
             <p><strong>Email :</strong> {contact.email}</p>
             <p><strong>Tél :</strong> {contact.telephone || 'Non renseigné'}</p>
           </div>
           <div style={{ background: '#f9f9f9', padding: '15px', borderRadius: '8px' }}>
-            <h3 style={{ margin: '0 0 10px 0' }}>👟 Profil</h3>
+            <h3 style={{ margin: '0 0 10px 0' }}>👟 Profil Acheteur</h3>
             <p><strong>Pointure :</strong> {contact.pointure ? `${contact.pointure} EU` : 'Inconnue'}</p>
             <p><strong>Marque :</strong> {contact.marque_preferee || 'Aucune'}</p>
           </div>
         </div>
       </div>
 
-      <div style={{ background: '#e6f2ff', padding: '25px', borderRadius: '10px', border: '2px solid #0066cc' }}>
-        <h3 style={{ marginTop: 0 }}>✉️ Envoyer un email</h3>
-        <form onSubmit={handleEnvoyerEmail} style={{ display: 'grid', gap: '15px' }}>
-          <select onChange={handleModeleChange} style={{ padding: '10px', borderRadius: '5px' }}>
-            <option value="">-- Utiliser un modèle --</option>
-            {modeles.map(m => <option key={m.id_modele} value={m.id_modele}>{m.nom_modele}</option>)}
-          </select>
-          <input type="text" placeholder="Sujet" value={sujet} onChange={(e) => setSujet(e.target.value)} required style={{ padding: '10px', borderRadius: '5px' }} />
-          <textarea placeholder="Message..." value={corps} onChange={(e) => setCorps(e.target.value)} required rows={6} style={{ padding: '10px', borderRadius: '5px', fontFamily: 'inherit' }} />
-          <button type="submit" disabled={envoiEnCours} style={{ padding: '12px', background: '#0066cc', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>
-            {envoiEnCours ? 'Envoi...' : '🚀 Envoyer l\'email'}
-          </button>
-          {messageEnvoi && <p style={{ fontWeight: 'bold', color: messageEnvoi.includes('✅') ? 'green' : 'red' }}>{messageEnvoi}</p>}
-        </form>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px', marginBottom: '30px' }}>
+        
+        {/* --- OPPORTUNITÉS --- */}
+        <div style={{ background: 'white', padding: '25px', borderRadius: '10px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', border: '2px solid #4CAF50' }}>
+          <h3 style={{ margin: '0 0 15px 0' }}>💰 Devis en cours ({contact.lead?.length || 0})</h3>
+          {!contact.lead || contact.lead.length === 0 ? (
+            <p style={{ color: '#888', fontStyle: 'italic' }}>Aucune opportunité.</p>
+          ) : (
+            <div style={{ display: 'grid', gap: '10px' }}>
+              {contact.lead.map(lead => {
+                const style = getStatutStyle(lead.statut);
+                return (
+                  <div key={lead.id_lead} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f9f9f9', padding: '12px', borderRadius: '8px', border: '1px solid #eaeaea' }}>
+                    <div>
+                      <span style={{ background: style.bg, color: style.color, padding: '4px 10px', borderRadius: '15px', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase' }}>{lead.statut}</span>
+                      <p style={{ margin: '5px 0 0 0', fontWeight: 'bold' }}>{lead.montant_estime ? `${lead.montant_estime} €` : 'À définir'}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* ---COMMANDES / FACTURES --- */}
+        <div style={{ background: 'white', padding: '25px', borderRadius: '10px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', border: '2px solid #0066cc' }}>
+          <h3 style={{ margin: '0 0 15px 0' }}>🛒 Historique d'achats ({contact.commande?.length || 0})</h3>
+          {!contact.commande || contact.commande.length === 0 ? (
+            <p style={{ color: '#888', fontStyle: 'italic' }}>Aucune commande passée.</p>
+          ) : (
+            <div style={{ display: 'grid', gap: '10px' }}>
+              {contact.commande.map(cmd => {
+                const isPaye = cmd.statut_paiement === 'Payé';
+                return (
+                  <div key={cmd.id_commande} style={{ background: '#f9f9f9', padding: '15px', borderRadius: '8px', borderLeft: `4px solid ${isPaye ? '#4CAF50' : '#ff9800'}` }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <strong style={{ color: '#0066cc', fontSize: '1.2rem' }}>{cmd.montant_total} €</strong>
+                      <span style={{ fontSize: '0.85rem', color: isPaye ? 'green' : '#ff9800', fontWeight: 'bold' }}>{cmd.statut_paiement}</span>
+                    </div>
+                    <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '0.9rem', color: '#555' }}>
+                      {cmd.commande_produit.map((cp, idx) => (
+                        <li key={idx}>{cp.quantite}x {cp.produit.marque} {cp.produit.modele}</li>
+                      ))}
+                    </ul>
+                    <p style={{ margin: '8px 0 0 0', fontSize: '0.8rem', color: '#888', textAlign: 'right' }}>
+                      Le {new Date(cmd.date_commande).toLocaleDateString('fr-FR')}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
       </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px', marginBottom: '30px' }}>
+        
+        {/* --- EMAIL --- */}
+        <div style={{ background: '#e6f2ff', padding: '25px', borderRadius: '10px', border: '1px solid #b3d9ff' }}>
+          <h3 style={{ marginTop: 0 }}>✉️ Envoyer un email</h3>
+          <form onSubmit={handleEnvoyerEmail} style={{ display: 'grid', gap: '10px' }}>
+            <select onChange={handleModeleChange} style={{ padding: '10px', borderRadius: '5px' }}>
+              <option value="">-- Utiliser un modèle --</option>
+              {modeles.map(m => <option key={m.id_modele} value={m.id_modele}>{m.nom_modele}</option>)}
+            </select>
+            <input type="text" placeholder="Sujet" value={sujet} onChange={(e) => setSujet(e.target.value)} required style={{ padding: '10px', borderRadius: '5px' }} />
+            <textarea placeholder="Message..." value={corps} onChange={(e) => setCorps(e.target.value)} required rows={4} style={{ padding: '10px', borderRadius: '5px', fontFamily: 'inherit' }} />
+            <button type="submit" disabled={envoiEnCours} style={{ padding: '10px', background: '#0066cc', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>{envoiEnCours ? 'Envoi...' : 'Envoyer'}</button>
+          </form>
+        </div>
+
+        {/* --- TÂCHES --- */}
+        <div style={{ background: '#fff9e6', padding: '25px', borderRadius: '10px', border: '1px solid #ffe680' }}>
+          <h3 style={{ marginTop: 0 }}>⏰ Relances & Tâches</h3>
+          <form onSubmit={handleAjouterTache} style={{ display: 'grid', gap: '10px', marginBottom: '15px' }}>
+            <input type="text" placeholder="Ex: Rappeler" value={titreTache} onChange={(e) => setTitreTache(e.target.value)} required style={{ padding: '10px', borderRadius: '5px', border: '1px solid #ccc' }} />
+            <div style={{ display: 'flex', gap: '5px' }}>
+              <input type="date" value={dateEcheance} onChange={(e) => setDateEcheance(e.target.value)} required style={{ padding: '10px', borderRadius: '5px', border: '1px solid #ccc', flex: 1 }} />
+              <button type="submit" style={{ padding: '10px', background: '#ffcc00', color: 'black', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>➕</button>
+            </div>
+          </form>
+          {tachesAFaire.map(tache => (
+            <div key={tache.id_tache} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'white', padding: '10px', borderRadius: '5px', marginBottom: '5px' }}>
+              <span style={{ fontSize: '0.9rem' }}>{tache.titre}</span>
+              <button onClick={() => handleChangerStatutTache(tache.id_tache, tache.statut)} style={{ background: '#4CAF50', color: 'white', border: 'none', padding: '4px 8px', borderRadius: '5px', cursor: 'pointer', fontSize: '0.8rem' }}>✔</button>
+            </div>
+          ))}
+        </div>
+      </div>
+
     </div>
   );
 }

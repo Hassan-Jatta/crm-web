@@ -22,10 +22,26 @@ export class ContactsService {
   }
 
   // GET : Récupérer un contact par son id
-  findOne(id: string) {
+  async findOne(id: string) {
+    const cleanId = id.trim();
     return this.prisma.contact.findUnique({
-      where: { id_contact: id },
-      include: { entreprise: true }, 
+      where: { id_contact: cleanId },
+      include: { 
+        entreprise: true,
+        communication: { orderBy: { date_envoi: 'desc' } },
+        tache: { orderBy: { date_echeance: 'asc' } },
+        lead: { orderBy: { date_creation: 'desc' } },
+        commande: {
+          orderBy: { date_commande: 'desc' },
+          include: {
+            commande_produit: {
+              include: {
+                produit: true
+              }
+            }
+          }
+        }
+      },
     });
   }
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useAuth } from '../context/AuthContext';
 
 interface Entreprise {
   id_entreprise: string;
@@ -20,6 +21,7 @@ interface Contact {
 }
 
 export default function ContactsPage() {
+  const { user } = useAuth();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [entreprises, setEntreprises] = useState<Entreprise[]>([]);
   const [loading, setLoading] = useState(true);
@@ -185,7 +187,9 @@ export default function ContactsPage() {
             <div style={{ display: 'flex', gap: '10px' }}>
               <button onClick={() => window.location.href = `/contacts/${contact.id_contact}`} style={{ background: '#4CAF50', color: 'white', border: 'none', padding: '8px 12px', borderRadius: '5px', cursor: 'pointer' }}>Fiche</button>
               <button onClick={() => handleEditClick(contact)} style={{ background: '#f0ad4e', color: 'white', border: 'none', padding: '8px 12px', borderRadius: '5px', cursor: 'pointer' }}>Modifier</button>
-              <button onClick={() => handleDeleteContact(contact.id_contact)} style={{ background: '#ff4444', color: 'white', border: 'none', padding: '8px 12px', borderRadius: '5px', cursor: 'pointer' }}>Supprimer</button>
+              {user?.role === 'Admin' && (
+                <button onClick={() => handleDeleteContact(contact.id_contact)} style={{ background: '#ff4444', color: 'white', border: 'none', padding: '8px 12px', borderRadius: '5px', cursor: 'pointer' }}>Supprimer</button>
+              )}
             </div>
           </div>
         ))}

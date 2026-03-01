@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useAuth } from '../context/AuthContext';
 
 // L'interface correspond à ton schema.prisma
 interface Entreprise {
@@ -11,6 +12,7 @@ interface Entreprise {
 }
 
 export default function EntreprisesPage() {
+  const { user } = useAuth();
   const [entreprises, setEntreprises] = useState<Entreprise[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -165,9 +167,11 @@ export default function EntreprisesPage() {
               <button onClick={() => handleEditClick(entreprise)} style={{ background: '#f0ad4e', color: 'white', border: 'none', padding: '8px 12px', borderRadius: '5px', cursor: 'pointer' }}>
                 Modifier
               </button>
-              <button onClick={() => handleDelete(entreprise.id_entreprise)} style={{ background: '#ff4444', color: 'white', border: 'none', padding: '8px 12px', borderRadius: '5px', cursor: 'pointer' }}>
-                Supprimer
-              </button>
+              {user?.role === 'Admin' && (
+                <button onClick={() => handleDelete(entreprise.id_entreprise)} style={{ background: '#ff4444', color: 'white', border: 'none', padding: '8px 12px', borderRadius: '5px', cursor: 'pointer' }}>
+                  Supprimer
+                </button>
+            )}
             </div>
           </div>
         ))}
