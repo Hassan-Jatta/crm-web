@@ -12,7 +12,6 @@ export default function Sidebar() {
   const navItems = [
     { name: '📊 Tableau de Bord', path: '/' },
     { name: '📇 Clients', path: '/contacts' },
-    { name: '🏢 Entreprises', path: '/entreprises' },
     { name: '🎯 Pipeline commercial', path: '/leads' },
     { name: '📅 Planning', path: '/taches' },
     { name: '📦 Stock & Catalogue', path: '/produits' },
