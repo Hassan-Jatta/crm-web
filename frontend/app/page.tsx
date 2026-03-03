@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from './context/AuthContext'; // 🟢 1. On importe le contexte !
 
 export default function KicksDashboard() {
   const router = useRouter();
+  const { user } = useAuth(); // 🟢 2. On récupère l'utilisateur connecté
   const [loading, setLoading] = useState(true);
   
   // KPI
@@ -18,6 +20,9 @@ export default function KicksDashboard() {
   const OBJECTIF_MENSUEL = 10000;
 
   useEffect(() => {
+    // Si l'utilisateur n'est pas encore chargé, on attend.
+    if (!user) return;
+
     const fetchDashboardData = async () => {
       try {
         const [resCommandes, resLeads, resTaches] = await Promise.all([
@@ -26,9 +31,18 @@ export default function KicksDashboard() {
           fetch('http://localhost:4000/taches')
         ]);
 
-        const commandes = await resCommandes.json();
-        const leads = await resLeads.json();
-        const taches = await resTaches.json();
+        let commandes = await resCommandes.json();
+        let leads = await resLeads.json();
+        let taches = await resTaches.json();
+
+        // 🟢 3. LE FILTRE MAGIQUE SELON LE RÔLE
+        // Si l'utilisateur n'est PAS Admin, on ne garde QUE ses propres données
+        if (user.role !== 'Admin') {
+          taches = taches.filter((t: any) => t.id_utilisateur === user.id_utilisateur);
+          // (Optionnel) Si tes commandes et leads ont aussi un "id_utilisateur", tu peux les filtrer ici :
+          // commandes = commandes.filter((c: any) => c.id_utilisateur === user.id_utilisateur);
+          // leads = leads.filter((l: any) => l.id_utilisateur === user.id_utilisateur);
+        }
 
         const now = new Date();
         const currentMonth = now.getMonth();
@@ -81,11 +95,11 @@ export default function KicksDashboard() {
     };
 
     fetchDashboardData();
-  }, []);
+  }, [user]); // 🟢 On relance si l'utilisateur change
 
   const pourcentageObjectif = Math.min((caMois / OBJECTIF_MENSUEL) * 100, 100).toFixed(1);
 
-  if (loading) return <div style={{ padding: '40px', textAlign: 'center', fontSize: '1.2rem' }}>Chargement de Kicks... 👟</div>;
+  if (loading) return <div style={{ padding: '40px', textAlign: 'center', fontSize: '1.2rem' }}>Chargement de l'espace... 👟</div>;
 
   return (
     <div style={{ padding: '40px', fontFamily: 'sans-serif', maxWidth: '1200px', margin: '0 auto', background: '#f5f7fa', minHeight: '100vh' }}>
@@ -93,20 +107,14 @@ export default function KicksDashboard() {
       {/* HEADER */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px' }}>
         <div>
-          <h1 style={{ margin: '0 0 5px 0', fontSize: '2.5rem', letterSpacing: '-1px' }}>👟 KICKS <span style={{ fontWeight: 'normal', color: '#666' }}>CRM</span></h1>
-          <p style={{ margin: 0, color: '#888', fontSize: '1.1rem' }}>Bonjour ! Voici un résumé de votre activité.</p>
-        </div>
-        
-        {/* MENU RAPIDE */}
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <button onClick={() => router.push('/contacts')} style={{ padding: '10px 15px', background: 'white', border: '1px solid #ccc', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>📇 Clients</button>
-          <button onClick={() => router.push('/leads')} style={{ padding: '10px 15px', background: 'white', border: '1px solid #ccc', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>🎯 Pipeline</button>
-          <button onClick={() => router.push('/commandes')} style={{ padding: '10px 15px', background: 'white', border: '1px solid #ccc', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>💳 Caisse</button>
-          <button onClick={() => router.push('/taches')} style={{ padding: '10px 15px', background: 'white', border: '1px solid #ccc', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>📅 Planning</button>
+          <h1 style={{ margin: '0 0 5px 0', fontSize: '2.5rem', letterSpacing: '-1px' }}>KICKS <span style={{ fontWeight: 'normal', color: '#666' }}>CRM</span></h1>
+          <p style={{ margin: 0, color: '#888', fontSize: '1.1rem' }}>
+            Bonjour {user?.nom_prenom.split(' ')[0]} ! Voici le résumé de {user?.role === 'Admin' ? 'l\'activité globale' : 'votre activité'}.
+          </p>
         </div>
       </div>
 
-      {/* --- KPI PRINCIPAUX (POINT 7 DU CAHIER DES CHARGES) --- */}
+      {/* --- KPI PRINCIPAUX --- */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px', marginBottom: '40px' }}>
         
         <div style={{ background: 'white', padding: '25px', borderRadius: '12px', boxShadow: '0 4px 10px rgba(0,0,0,0.03)', borderTop: '4px solid #0066cc' }}>
@@ -160,7 +168,7 @@ export default function KicksDashboard() {
         <div style={{ background: 'white', padding: '25px', borderRadius: '12px', boxShadow: '0 4px 10px rgba(0,0,0,0.03)' }}>
           <h3 style={{ margin: '0 0 20px 0', display: 'flex', alignItems: 'center', gap: '10px', color: '#ff4444' }}>🚨 Tâches urgentes ({tachesUrgentes.length})</h3>
           {tachesUrgentes.length === 0 ? (
-            <p style={{ color: '#4CAF50', fontWeight: 'bold' }}>Super ! Vous êtes à jour dans vos relances. ✅</p>
+            <p style={{ color: '#4CAF50', fontWeight: 'bold' }}>Super ! Vous êtes à jour dans vos relances.</p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
               {tachesUrgentes.slice(0, 5).map(tache => (

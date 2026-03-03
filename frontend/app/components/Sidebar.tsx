@@ -10,17 +10,20 @@ export default function Sidebar() {
 
 
   const navItems = [
-    { name: '📊 Tableau de Bord', path: '/' },
+    { name: '📊 Tableau de bord', path: '/' },
     { name: '📇 Clients', path: '/contacts' },
     { name: '🎯 Pipeline commercial', path: '/leads' },
-    { name: '📅 Planning', path: '/taches' },
-    { name: '📦 Stock & Catalogue', path: '/produits' },
-    { name: '💳 Caisse & Ventes', path: '/commandes' }, 
+    { name: '📅 Tâches', path: '/taches' },
+    { name: '📦 Inventaire', path: '/produits' },
+    { name: '💳 Commandes', path: '/commandes' }, 
   ];
 
   if (user?.role === 'Admin') {
     navItems.push({ name: '📈 Statistiques', path: '/statistiques' });
+    navItems.push({ name: '👔 Equipe', path: '/equipe' });
   }
+
+
 
   const getInitials = (name?: string) => {
     if (!name) return '👤';
@@ -45,7 +48,7 @@ export default function Sidebar() {
       {/* 1. EN-TÊTE / LOGO */}
       <div style={{ textAlign: 'center', marginBottom: '30px', marginTop: '10px' }}>
         <h2 style={{ fontSize: '2rem', margin: '0', letterSpacing: '-1px', color: '#fff' }}>
-          👟 KICKS
+          KICKS
         </h2>
         <span style={{ fontSize: '0.8rem', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '2px' }}>
           CRM System

@@ -118,7 +118,7 @@ export default function ContactsPage() {
       
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '30px' }}>
         <div>
-          <h1 style={{ margin: '0 0 10px 0' }}>📇 Annuaire Clients</h1>
+          <h1 style={{ margin: '0 0 10px 0' }}>📇 Gestion des clients</h1>
           <p style={{ margin: 0, color: '#666' }}>Gérez vos relations particuliers et partenaires commerciaux.</p>
         </div>
         <div style={{ display: 'flex', gap: '15px' }}>

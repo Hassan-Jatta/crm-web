@@ -141,7 +141,7 @@ export default function LeadsPage() {
       {/* HEADER & ACTIONS */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <div>
-          <h1 style={{ margin: '0 0 5px 0' }}>🎯 Pipeline des Ventes</h1>
+          <h1 style={{ margin: '0 0 5px 0' }}>🎯 Pipeline des ventes</h1>
           <p style={{ margin: 0, color: '#666' }}>Glissez et déposez les cartes pour faire avancer vos opportunités.</p>
         </div>
         <div style={{ display: 'flex', gap: '15px' }}>

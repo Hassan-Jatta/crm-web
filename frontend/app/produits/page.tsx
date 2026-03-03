@@ -111,7 +111,7 @@ export default function ProduitsPage() {
     <div style={{ padding: '40px', fontFamily: 'sans-serif', maxWidth: '1000px', margin: '0 auto', background: '#f5f7fa', minHeight: '100vh', boxSizing: 'border-box' }}>
       
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
-        <h1 style={{ margin: 0 }}>📦 Catalogue & Inventaire</h1>
+        <h1 style={{ margin: 0 }}>📦 Inventaire</h1>
         {user?.role !== 'Admin' && (
           <span style={{ background: '#e3f2fd', color: '#0066cc', padding: '8px 15px', borderRadius: '20px', fontSize: '0.9rem', fontWeight: 'bold' }}>
             👁️ Mode Lecture Seule

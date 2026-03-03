@@ -8,7 +8,8 @@ import interactionPlugin from '@fullcalendar/interaction';
 import { useAuth } from '../context/AuthContext';
 
 interface Contact { id_contact: string; nom: string; prenom: string; }
-interface Tache { id_tache: string; titre: string; type_tache: string; statut: string; date_echeance: string; contact?: Contact; }
+// 🟢 Ajout de id_utilisateur dans l'interface
+interface Tache { id_tache: string; titre: string; type_tache: string; statut: string; date_echeance: string; contact?: Contact; id_utilisateur?: string; }
 
 export default function TachesPage() {
   const { user } = useAuth();
@@ -42,14 +43,12 @@ export default function TachesPage() {
     fetchData();
   }, []);
 
-  
   const handleDateClick = (arg: any) => {
     setDateSelectionnee(arg.dateStr); 
     setTitre('');
     setShowModal(true);
   };
 
-  
   const handleEventClick = async (arg: any) => {
     const idTache = arg.event.id;
     const action = window.prompt("Que voulez-vous faire ?\nTapez '1' pour marquer comme Terminé ✅\nTapez '2' pour Supprimer ❌");
@@ -69,7 +68,6 @@ export default function TachesPage() {
     }
   };
 
-  
   const handleAddTask = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!titre || !dateSelectionnee) return;
@@ -82,7 +80,8 @@ export default function TachesPage() {
         type_tache: typeTache,
         statut: 'À faire',
         date_echeance: new Date(dateSelectionnee).toISOString(),
-        id_contact: idContact || null
+        id_contact: idContact || null,
+        id_utilisateur: user?.id_utilisateur // 🟢 On lie la tâche au vendeur connecté !
       })
     });
 
@@ -90,7 +89,12 @@ export default function TachesPage() {
     fetchData();
   };
 
-  const events = taches.map((t) => {
+  // 🟢 LE FILTRE MAGIQUE : On ne garde que les tâches de l'utilisateur connecté
+  // (Optionnel : si tu veux que l'Admin voie tout le monde, tu peux faire :
+  // const mesTaches = user?.role === 'Admin' ? taches : taches.filter(t => t.id_utilisateur === user?.id_utilisateur); )
+  const mesTaches = taches.filter(t => t.id_utilisateur === user?.id_utilisateur);
+
+  const events = mesTaches.map((t) => {
     const icon = t.type_tache === 'Appel' ? '📞' : t.type_tache === 'Email' ? '✉️' : t.type_tache === 'Rendez-vous' ? '🤝' : '⏰';
     const nomClient = t.contact ? ` - ${t.contact.prenom} ${t.contact.nom}` : '';
     
@@ -115,7 +119,7 @@ export default function TachesPage() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
         <div>
           <h1 style={{ margin: '0 0 5px 0' }}>📅 Mon Planning</h1>
-          <p style={{ margin: 0, color: '#666' }}>Cliquez sur une date pour ajouter un événement, ou sur une tâche pour la modifier.</p>
+          <p style={{ margin: 0, color: '#666' }}>Gérez vos propres tâches et relances clients.</p>
         </div>
         <button onClick={() => { setDateSelectionnee(new Date().toISOString().split('T')[0]); setShowModal(true); }} style={{ padding: '10px 20px', background: 'black', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>
           ➕ Nouvelle Tâche
@@ -143,10 +147,22 @@ export default function TachesPage() {
       {showModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
           <div style={{ background: 'white', padding: '30px', borderRadius: '10px', width: '100%', maxWidth: '500px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }}>
-            <h2 style={{ marginTop: 0 }}>Planifier une action</h2>
-            <p style={{ color: '#666', marginBottom: '20px' }}>Date sélectionnée : <strong>{new Date(dateSelectionnee).toLocaleDateString('fr-FR')}</strong></p>
+            <h2 style={{ marginTop: 0, marginBottom: '20px' }}>Planifier une action</h2>
             
             <form onSubmit={handleAddTask} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+              
+              {/* 🟢 LA DATE EST MAINTENANT MODIFIABLE */}
+              <div>
+                <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem', color: '#666' }}>Date de l'action</label>
+                <input 
+                  type="date" 
+                  value={dateSelectionnee} 
+                  onChange={(e) => setDateSelectionnee(e.target.value)} 
+                  required 
+                  style={{ width: '100%', padding: '12px', borderRadius: '5px', border: '1px solid #ccc', boxSizing: 'border-box' }} 
+                />
+              </div>
+
               <input type="text" placeholder="Titre (ex: Rappeler pour le devis)" value={titre} onChange={(e) => setTitre(e.target.value)} required style={{ padding: '12px', borderRadius: '5px', border: '1px solid #ccc' }} />
               
               <select value={typeTache} onChange={(e) => setTypeTache(e.target.value)} style={{ padding: '12px', borderRadius: '5px', border: '1px solid #ccc' }}>
