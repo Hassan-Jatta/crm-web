@@ -38,8 +38,8 @@ export default function ContactsPage() {
   const fetchData = async () => {
     try {
       const [resContacts, resEntreprises] = await Promise.all([
-        fetch('http://localhost:4000/contacts'),
-        fetch('http://localhost:4000/entreprises')
+        fetch(process.env.NEXT_PUBLIC_API_URL + '/contacts'),
+        fetch(process.env.NEXT_PUBLIC_API_URL + '/entreprises')
       ]);
       if (resContacts.ok) setContacts(await resContacts.json());
       if (resEntreprises.ok) setEntreprises(await resEntreprises.json());
@@ -53,7 +53,7 @@ export default function ContactsPage() {
   const handleSubmitContact = async (e: React.FormEvent) => {
     e.preventDefault();
     const data = { nom: c_nom, prenom: c_prenom, email: c_email || null, telephone: c_telephone || null, id_entreprise: c_id_entreprise || null };
-    const url = c_id ? `http://localhost:4000/contacts/${c_id}` : 'http://localhost:4000/contacts';
+    const url = c_id ? `${process.env.NEXT_PUBLIC_API_URL}/contacts/${c_id}` : process.env.NEXT_PUBLIC_API_URL + '/contacts';
     
     await fetch(url, {
       method: c_id ? 'PATCH' : 'POST',
@@ -68,7 +68,7 @@ export default function ContactsPage() {
   const handleSubmitEntreprise = async (e: React.FormEvent) => {
     e.preventDefault();
     const data = { nom_societe: e_nom, secteur_activite: e_secteur || null, type_entreprise: e_type || null };
-    const url = e_id ? `http://localhost:4000/entreprises/${e_id}` : 'http://localhost:4000/entreprises';
+    const url = e_id ? `${process.env.NEXT_PUBLIC_API_URL}/entreprises/${e_id}` : process.env.NEXT_PUBLIC_API_URL + '/entreprises';
     
     await fetch(url, {
       method: e_id ? 'PATCH' : 'POST',
@@ -94,13 +94,13 @@ export default function ContactsPage() {
 
   const handleDeleteContact = async (id: string) => {
     if (!window.confirm("Supprimer ce contact ?")) return;
-    await fetch(`http://localhost:4000/contacts/${id}`, { method: 'DELETE' });
+    await fetch(`${process.env.NEXT_PUBLIC_API_URL}/contacts/${id}`, { method: 'DELETE' });
     fetchData();
   };
 
   const handleDeleteEntreprise = async (id: string) => {
     if (!window.confirm("Supprimer cette entreprise ?")) return;
-    await fetch(`http://localhost:4000/entreprises/${id}`, { method: 'DELETE' });
+    await fetch(`${process.env.NEXT_PUBLIC_API_URL}/entreprises/${id}`, { method: 'DELETE' });
     fetchData();
   };
 

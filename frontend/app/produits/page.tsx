@@ -30,7 +30,7 @@ export default function ProduitsPage() {
 
   const fetchProduits = async () => {
     try {
-      const response = await fetch('http://localhost:4000/produits');
+      const response = await fetch(process.env.NEXT_PUBLIC_API_URL + '/produits');
       if (!response.ok) throw new Error("Erreur lors du chargement des produits");
       setProduits(await response.json());
     } catch (err: any) {
@@ -58,7 +58,7 @@ export default function ProduitsPage() {
     };
 
     try {
-      const url = editingId ? `http://localhost:4000/produits/${editingId}` : 'http://localhost:4000/produits';
+      const url = editingId ? `${process.env.NEXT_PUBLIC_API_URL}/produits/${editingId}` : process.env.NEXT_PUBLIC_API_URL + '/produits';
       const response = await fetch(url, {
         method: editingId ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -88,7 +88,7 @@ export default function ProduitsPage() {
   const handleDelete = async (id: string) => {
     if (!window.confirm("Êtes-vous sûr de vouloir supprimer ce produit du catalogue ?")) return;
     try {
-      await fetch(`http://localhost:4000/produits/${id}`, { method: 'DELETE' });
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/produits/${id}`, { method: 'DELETE' });
       fetchProduits();
     } catch (err) {
       console.error(err);

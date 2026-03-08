@@ -26,9 +26,9 @@ export default function KicksDashboard() {
     const fetchDashboardData = async () => {
       try {
         const [resCommandes, resLeads, resTaches] = await Promise.all([
-          fetch('http://localhost:4000/commandes'),
-          fetch('http://localhost:4000/leads'),
-          fetch('http://localhost:4000/taches')
+          fetch(process.env.NEXT_PUBLIC_API_URL + '/commandes'),
+          fetch(process.env.NEXT_PUBLIC_API_URL + '/leads'),
+          fetch(process.env.NEXT_PUBLIC_API_URL + '/taches')
         ]);
 
         let commandes = await resCommandes.json();

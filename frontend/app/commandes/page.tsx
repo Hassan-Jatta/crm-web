@@ -41,9 +41,9 @@ export default function CommandesPage() {
   const fetchData = async () => {
     try {
       const [resCmd, resContacts, resProd] = await Promise.all([
-        fetch('http://localhost:4000/commandes'),
-        fetch('http://localhost:4000/contacts'),
-        fetch('http://localhost:4000/produits')
+        fetch(process.env.NEXT_PUBLIC_API_URL + '/commandes'),
+        fetch(process.env.NEXT_PUBLIC_API_URL + '/contacts'),
+        fetch(process.env.NEXT_PUBLIC_API_URL + '/produits')
       ]);
       setCommandes(await resCmd.json());
       setContacts(await resContacts.json());
@@ -115,7 +115,7 @@ export default function CommandesPage() {
     };
 
     try {
-      const response = await fetch('http://localhost:4000/commandes', {
+      const response = await fetch(process.env.NEXT_PUBLIC_API_URL + '/commandes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(commandeData),
@@ -140,7 +140,7 @@ export default function CommandesPage() {
 
   const handleDelete = async (id: string) => {
     if (!window.confirm("Annuler et supprimer cette commande ?")) return;
-    await fetch(`http://localhost:4000/commandes/${id}`, { method: 'DELETE' });
+    await fetch(`${process.env.NEXT_PUBLIC_API_URL}/commandes/${id}`, { method: 'DELETE' });
     fetchData();
   };
 

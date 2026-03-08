@@ -28,10 +28,10 @@ export default function StatistiquesPage() {
     const fetchStats = async () => {
       try {
         const [resCmd, resLeads, resContacts, resUsers] = await Promise.all([
-          fetch('http://localhost:4000/commandes'),
-          fetch('http://localhost:4000/leads'),
-          fetch('http://localhost:4000/contacts'),
-          fetch('http://localhost:4000/utilisateurs')
+          fetch(process.env.NEXT_PUBLIC_API_URL + '/commandes'),
+          fetch(process.env.NEXT_PUBLIC_API_URL + '/leads'),
+          fetch(process.env.NEXT_PUBLIC_API_URL + '/contacts'),
+          fetch(process.env.NEXT_PUBLIC_API_URL + '/utilisateurs')
         ]);
 
         const commandes = await resCmd.json();

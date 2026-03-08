@@ -38,9 +38,9 @@ export default function LeadsPage() {
   const fetchData = async () => {
     try {
       const [resLeads, resContacts, resUtilisateurs] = await Promise.all([
-        fetch('http://localhost:4000/leads'),
-        fetch('http://localhost:4000/contacts'),
-        fetch('http://localhost:4000/utilisateurs')
+        fetch(process.env.NEXT_PUBLIC_API_URL + '/leads'),
+        fetch(process.env.NEXT_PUBLIC_API_URL + '/contacts'),
+        fetch(process.env.NEXT_PUBLIC_API_URL + '/utilisateurs')
       ]);
       setLeads(await resLeads.json());
       setContacts(await resContacts.json());
@@ -60,7 +60,7 @@ export default function LeadsPage() {
       statut, source: source || null, montant_estime: montant ? parseFloat(montant) : null,
     };
 
-    const url = editingId ? `http://localhost:4000/leads/${editingId}` : 'http://localhost:4000/leads';
+    const url = editingId ? `${process.env.NEXT_PUBLIC_API_URL}/leads/${editingId}` : process.env.NEXT_PUBLIC_API_URL + '/leads';
     await fetch(url, {
       method: editingId ? 'PATCH' : 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -84,7 +84,7 @@ export default function LeadsPage() {
 
   const handleDelete = async (id: string) => {
     if (!window.confirm("Supprimer cette opportunité ?")) return;
-    await fetch(`http://localhost:4000/leads/${id}`, { method: 'DELETE' });
+    await fetch(`${process.env.NEXT_PUBLIC_API_URL}/leads/${id}`, { method: 'DELETE' });
     setLeads(leads.filter(l => l.id_lead !== id));
   };
 
@@ -106,7 +106,7 @@ export default function LeadsPage() {
     setLeads(leads.map(lead => lead.id_lead === id_lead ? { ...lead, statut: nouveauStatut } : lead));
 
     // 2. Mise à jour dans la base de données
-    await fetch(`http://localhost:4000/leads/${id_lead}`, {
+    await fetch(`${process.env.NEXT_PUBLIC_API_URL}/leads/${id_lead}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ statut: nouveauStatut })

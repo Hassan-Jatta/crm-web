@@ -37,7 +37,7 @@ export default function EquipePage() {
 
   const fetchUtilisateurs = async () => {
     try {
-      const res = await fetch('http://localhost:4000/utilisateurs');
+      const res = await fetch(process.env.NEXT_PUBLIC_API_URL + '/utilisateurs');
       if (res.ok) setUtilisateurs(await res.json());
     } catch (err) {
       console.error(err);
@@ -59,7 +59,7 @@ export default function EquipePage() {
     if (motDePasse) data.mot_de_passe = motDePasse; 
 
     try {
-      const url = idEdit ? `http://localhost:4000/utilisateurs/${idEdit}` : 'http://localhost:4000/utilisateurs';
+      const url = idEdit ? `${process.env.NEXT_PUBLIC_API_URL}/utilisateurs/${idEdit}` : process.env.NEXT_PUBLIC_API_URL + '/utilisateurs';
       const method = idEdit ? 'PATCH' : 'POST';
 
       const res = await fetch(url, {
@@ -95,7 +95,7 @@ export default function EquipePage() {
     }
     if (!window.confirm("Êtes-vous sûr de vouloir supprimer cet accès ?")) return;
     
-    await fetch(`http://localhost:4000/utilisateurs/${id}`, { method: 'DELETE' });
+    await fetch(`${process.env.NEXT_PUBLIC_API_URL}/utilisateurs/${id}`, { method: 'DELETE' });
     fetchUtilisateurs();
   };
 

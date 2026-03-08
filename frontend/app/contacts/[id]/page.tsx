@@ -50,7 +50,7 @@ export default function ContactDetailPage() {
 
   // --- CHARGEMENT DES DONNÉES ---
   const fetchContactSeul = async () => {
-    const resContact = await fetch(`http://localhost:4000/contacts/${id}`);
+    const resContact = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/contacts/${id}`);
     if (resContact.ok) setContact(await resContact.json());
   };
 
@@ -59,8 +59,8 @@ export default function ContactDetailPage() {
     const fetchDonnees = async () => {
       try {
         const [resContact, resModeles] = await Promise.all([
-          fetch(`http://localhost:4000/contacts/${id}`),
-          fetch(`http://localhost:4000/modeles-email`)
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/contacts/${id}`),
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/modeles-email`)
         ]);
         if (!resContact.ok) throw new Error('Contact introuvable');
         setContact(await resContact.json());
@@ -91,7 +91,7 @@ export default function ContactDetailPage() {
     setEnvoiEnCours(true);
     setMessageEnvoi('Envoi en cours... ⏳');
     try {
-      const response = await fetch('http://localhost:4000/communications/envoyer', {
+      const response = await fetch(process.env.NEXT_PUBLIC_API_URL + '/communications/envoyer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email_destinataire: contact.email, sujet, corps, id_contact: contact.id_contact }),
@@ -114,7 +114,7 @@ export default function ContactDetailPage() {
     e.preventDefault();
     if (!contact || !dateEcheance) return;
     try {
-      await fetch('http://localhost:4000/taches', {
+      await fetch(process.env.NEXT_PUBLIC_API_URL + '/taches', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -135,7 +135,7 @@ export default function ContactDetailPage() {
 
   const handleChangerStatutTache = async (idTache: string, statutActuel: string) => {
     const nouveauStatut = statutActuel === 'À faire' ? 'Terminé' : 'À faire';
-    await fetch(`http://localhost:4000/taches/${idTache}`, { 
+    await fetch(`${process.env.NEXT_PUBLIC_API_URL}/taches/${idTache}`, { 
       method: 'PATCH', 
       headers: { 'Content-Type': 'application/json' }, 
       body: JSON.stringify({ statut: nouveauStatut }) 

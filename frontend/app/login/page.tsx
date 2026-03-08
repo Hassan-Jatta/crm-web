@@ -16,7 +16,7 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const res = await fetch('http://localhost:4000/utilisateurs');
+      const res = await fetch(process.env.NEXT_PUBLIC_API_URL + '/utilisateurs');
       const utilisateurs = await res.json();
 
       const userTrouve = utilisateurs.find((u: any) => u.email === email && u.mot_de_passe === password);

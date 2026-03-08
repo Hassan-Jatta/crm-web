@@ -27,8 +27,8 @@ export default function TachesPage() {
   const fetchData = async () => {
     try {
       const [resTaches, resContacts] = await Promise.all([
-        fetch('http://localhost:4000/taches'),
-        fetch('http://localhost:4000/contacts')
+        fetch(process.env.NEXT_PUBLIC_API_URL + '/taches'),
+        fetch(process.env.NEXT_PUBLIC_API_URL + '/contacts')
       ]);
       setTaches(await resTaches.json());
       setContacts(await resContacts.json());
@@ -54,7 +54,7 @@ export default function TachesPage() {
     const action = window.prompt("Que voulez-vous faire ?\nTapez '1' pour marquer comme Terminé ✅\nTapez '2' pour Supprimer ❌");
     
     if (action === '1') {
-      await fetch(`http://localhost:4000/taches/${idTache}`, {
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/taches/${idTache}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ statut: 'Terminé' })
@@ -62,7 +62,7 @@ export default function TachesPage() {
       fetchData();
     } else if (action === '2') {
       if (window.confirm("Sûr de vouloir supprimer cette tâche ?")) {
-        await fetch(`http://localhost:4000/taches/${idTache}`, { method: 'DELETE' });
+        await fetch(`${process.env.NEXT_PUBLIC_API_URL}/taches/${idTache}`, { method: 'DELETE' });
         fetchData();
       }
     }
@@ -72,7 +72,7 @@ export default function TachesPage() {
     e.preventDefault();
     if (!titre || !dateSelectionnee) return;
 
-    await fetch('http://localhost:4000/taches', {
+    await fetch(process.env.NEXT_PUBLIC_API_URL + '/taches', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
