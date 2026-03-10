@@ -88,6 +88,7 @@ model produit {
   marque           String             @db.VarChar(100)
   prix_unitaire    Decimal            @db.Decimal(10, 2)
   stock_disponible Int?               @default(0)
+  image_url        String?            @db.Text
   commande_produit commande_produit[]
 }
 

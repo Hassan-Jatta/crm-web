@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { CreateContactDto } from './dto/create-contact.dto';
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaService } from '../modeles-email/prisma/prisma.service';
 
 @Injectable()
 export class ContactsService {

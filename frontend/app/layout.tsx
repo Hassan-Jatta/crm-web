@@ -1,29 +1,40 @@
-'use client'; // Le layout devient un composant client pour utiliser le hook de chemin
+'use client'; 
 
 import { usePathname } from 'next/navigation';
-import Sidebar from './components/Sidebar';
+import Navbar from './components/Navbar'; 
 import { AuthProvider } from './context/AuthContext';
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const isLoginPage = pathname === '/login'; // On vérifie si on est sur la page de connexion
+  
+  // ⚠️ ATTENTION : Si ta page de login est sur "/", modifie ici pour : pathname === '/'
+  const isLoginPage = pathname === '/login'
 
   return (
     <html lang="fr">
-      <body style={{ margin: 0, padding: 0, backgroundColor: '#f5f7fa', fontFamily: 'sans-serif', display: 'flex' }}>
+      {/* 1. On enlève le "display: flex" du body pour éviter que la barre se mette à gauche */}
+      <body style={{ margin: 0, padding: 0, backgroundColor: '#f5f7fa', fontFamily: 'sans-serif' }}>
         
-  
         <AuthProvider>
           
-          {!isLoginPage && <Sidebar />}
+          {/* 2. On crée un conteneur qui s'empile de haut en bas (column) */}
+          <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+            
+            {/* 3. La barre de navigation s'affiche en haut (sauf sur le login) */}
+            {!isLoginPage && <Navbar />}
 
-          <main style={{ 
-            marginLeft: isLoginPage ? '0' : '260px', 
-            width: isLoginPage ? '100%' : 'calc(100% - 260px)', 
-            minHeight: '100vh' 
-          }}>
-            {children}
-          </main>
+            {/* 4. Le contenu principal prend tout le reste de la place, sans marge à gauche ! */}
+            <main style={{ 
+              flex: 1, 
+              width: '100%', 
+              // On garde 0 padding sur le login pour ton image plein écran, sinon on met 40px pour aérer le CRM
+              padding: isLoginPage ? '0' : '40px', 
+              boxSizing: 'border-box' 
+            }}>
+              {children}
+            </main>
+
+          </div>
 
         </AuthProvider>
 

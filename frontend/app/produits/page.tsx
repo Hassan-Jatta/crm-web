@@ -9,6 +9,7 @@ interface Produit {
   modele: string;
   prix_unitaire: number;
   stock_disponible: number;
+  image_url?: string; // 🟢 1. On l'ajoute à l'interface !
 }
 
 export default function ProduitsPage() {
@@ -20,6 +21,7 @@ export default function ProduitsPage() {
   const [recherche, setRecherche] = useState('');
 
   // États du formulaire
+  const [imageUrl, setImageUrl] = useState('');
   const [marque, setMarque] = useState('');
   const [modele, setModele] = useState('');
   const [prixUnitaire, setPrixUnitaire] = useState('');
@@ -46,7 +48,7 @@ export default function ProduitsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (user?.role !== 'Admin') return; // Sécurité supplémentaire côté front
+    if (user?.role !== 'Admin') return;
 
     setFormMessage('Sauvegarde en cours... ⏳');
 
@@ -55,6 +57,7 @@ export default function ProduitsPage() {
       modele,
       prix_unitaire: parseFloat(prixUnitaire),
       stock_disponible: parseInt(stock, 10),
+      image_url: imageUrl
     };
 
     try {
@@ -82,6 +85,7 @@ export default function ProduitsPage() {
     setModele(produit.modele);
     setPrixUnitaire(produit.prix_unitaire.toString());
     setStock(produit.stock_disponible.toString());
+    setImageUrl(produit.image_url || ''); // 🟢 2. On charge l'image dans le formulaire
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -97,7 +101,7 @@ export default function ProduitsPage() {
 
   const resetForm = () => {
     setEditingId(null);
-    setMarque(''); setModele(''); setPrixUnitaire(''); setStock('0');
+    setMarque(''); setModele(''); setPrixUnitaire(''); setStock('0'); setImageUrl(''); // 🟢 3. On vide le champ image
   };
 
   const produitsFiltres = produits.filter(p => 
@@ -127,11 +131,32 @@ export default function ProduitsPage() {
           </h3>
           
           <form onSubmit={handleSubmit} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+            
+            {/* Ligne pour l'URL de l'image (prend toute la largeur) */}
+            <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '15px', alignItems: 'flex-start' }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>Lien de la photo (URL)</label>
+                <input 
+                  type="url" 
+                  placeholder="https://exemple.com/image-sneaker.jpg" 
+                  value={imageUrl} 
+                  onChange={(e) => setImageUrl(e.target.value)} 
+                  style={{ width: '100%', padding: '12px', borderRadius: '5px', border: '1px solid #ccc', boxSizing: 'border-box' }} 
+                />
+              </div>
+              {/* Petit aperçu en direct sur le côté */}
+              {imageUrl && (
+                <div style={{ width: '80px', height: '80px', flexShrink: 0, borderRadius: '8px', overflow: 'hidden', border: '1px solid #eee' }}>
+                  <img src={imageUrl} alt="Aperçu" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                </div>
+              )}
+            </div>
+
             <input type="text" placeholder="Marque (ex: Nike)" value={marque} onChange={(e) => setMarque(e.target.value)} required style={{ padding: '12px', borderRadius: '5px', border: '1px solid #ccc' }} />
             <input type="text" placeholder="Modèle (ex: Air Max 95)" value={modele} onChange={(e) => setModele(e.target.value)} required style={{ padding: '12px', borderRadius: '5px', border: '1px solid #ccc' }} />
             
             <div>
-              <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem', color: '#666' }}>Prix de vente unitaire (€)</label>
+              <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem', color: '#666' }}>Prix unitaire (€)</label>
               <input type="number" step="0.01" min="0" placeholder="Ex: 150.00" value={prixUnitaire} onChange={(e) => setPrixUnitaire(e.target.value)} required style={{ width: '100%', padding: '12px', borderRadius: '5px', border: '1px solid #ccc', boxSizing: 'border-box' }} />
             </div>
 
@@ -149,7 +174,7 @@ export default function ProduitsPage() {
               )}
             </div>
           </form>
-          {formMessage && <p style={{ marginTop: '15px', fontWeight: 'bold', color: formMessage.includes('✅') ? 'green' : 'red' }}>{formMessage}</p>}
+          {formMessage && <p style={{ marginTop: '15px', fontWeight: 'bold', color: formMessage.includes('✅') ? 'green' : 'red', textAlign: 'center' }}>{formMessage}</p>}
         </div>
       )}
 
@@ -172,37 +197,46 @@ export default function ProduitsPage() {
               let stockColor = '#4CAF50';
               let stockText = `${stock} en stock`;
               
-              if (stock === 0) { stockColor = '#f44336'; stockText = '❌ Rupture de stock'; } 
-              else if (stock <= 5) { stockColor = '#ff9800'; stockText = `⚠️ Plus que ${stock} en stock !`; }
+              if (stock === 0) { stockColor = '#f44336'; stockText = '❌ Rupture'; } 
+              else if (stock <= 5) { stockColor = '#ff9800'; stockText = `⚠️ Reste ${stock}`; }
 
               return (
-                <div key={produit.id_produit} style={{ background: 'white', padding: '20px', borderRadius: '10px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', border: '1px solid #eaeaea', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                // 🟢 4. Ajout de "overflow: hidden" pour que l'image ne dépasse pas des bords arrondis de la carte
+                <div key={produit.id_produit} style={{ background: 'white', borderRadius: '10px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', border: '1px solid #eaeaea', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                   
-                  <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
-                      <span style={{ background: '#eee', padding: '4px 10px', borderRadius: '15px', fontSize: '0.8rem', fontWeight: 'bold', textTransform: 'uppercase', color: '#555' }}>
-                        {produit.marque}
-                      </span>
-                      <strong style={{ fontSize: '1.2rem', color: '#0066cc' }}>
-                        {produit.prix_unitaire} €
-                      </strong>
+                  {/* 🟢 4. La fameuse image en haut de la carte ! */}
+                  <img 
+                    src={produit.image_url || 'https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?q=80&w=500&auto=format&fit=crop'} 
+                    alt={produit.modele} 
+                    style={{ width: '100%', height: '200px', objectFit: 'cover', backgroundColor: '#f3f4f6' }} 
+                  />
+
+                  {/* Le contenu en dessous de l'image */}
+                  <div style={{ padding: '20px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
+                        <span style={{ background: '#eee', padding: '4px 10px', borderRadius: '15px', fontSize: '0.8rem', fontWeight: 'bold', textTransform: 'uppercase', color: '#555' }}>
+                          {produit.marque}
+                        </span>
+                        <strong style={{ fontSize: '1.2rem', color: '#0066cc' }}>
+                          {produit.prix_unitaire} €
+                        </strong>
+                      </div>
+                      
+                      <h3 style={{ margin: '0 0 15px 0', fontSize: '1.2rem' }}>{produit.modele}</h3>
+                      
+                      <div style={{ padding: '6px 10px', borderRadius: '5px', background: `${stockColor}15`, color: stockColor, fontWeight: 'bold', display: 'inline-block', fontSize: '0.85rem' }}>
+                        {stockText}
+                      </div>
                     </div>
-                    
-                    <h3 style={{ margin: '0 0 15px 0', fontSize: '1.4rem' }}>{produit.modele}</h3>
-                    
-                    <div style={{ padding: '8px 12px', borderRadius: '5px', background: `${stockColor}15`, color: stockColor, fontWeight: 'bold', display: 'inline-block', fontSize: '0.9rem' }}>
-                      {stockText}
-                    </div>
+
+                    {user?.role === 'Admin' && (
+                      <div style={{ display: 'flex', gap: '10px', marginTop: '20px', borderTop: '1px solid #eee', paddingTop: '15px' }}>
+                        <button onClick={() => handleEdit(produit)} style={{ flex: 1, background: '#f5f5f5', color: '#333', border: '1px solid #ccc', padding: '8px', borderRadius: '5px', cursor: 'pointer', fontSize: '0.9rem' }}>✏️ Éditer</button>
+                        <button onClick={() => handleDelete(produit.id_produit)} style={{ background: '#ff4444', color: 'white', border: 'none', padding: '8px 12px', borderRadius: '5px', cursor: 'pointer', fontSize: '0.9rem' }}>Supprimer</button>
+                      </div>
+                    )}
                   </div>
-
-                  {/* 🟢 4. LE BOUCLIER : Les boutons d'action n'apparaissent QUE pour l'Admin */}
-                  {user?.role === 'Admin' && (
-                    <div style={{ display: 'flex', gap: '10px', marginTop: '20px', borderTop: '1px solid #eee', paddingTop: '15px' }}>
-                      <button onClick={() => handleEdit(produit)} style={{ flex: 1, background: '#f5f5f5', color: '#333', border: '1px solid #ccc', padding: '8px', borderRadius: '5px', cursor: 'pointer' }}>✏️ Éditer</button>
-                      <button onClick={() => handleDelete(produit.id_produit)} style={{ background: '#ff4444', color: 'white', border: 'none', padding: '8px 12px', borderRadius: '5px', cursor: 'pointer' }}>Supprimer</button>
-                    </div>
-                  )}
-
                 </div>
               );
             })}

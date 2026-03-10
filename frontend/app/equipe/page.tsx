@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useRouter } from 'next/navigation';
+import { supabase } from '../../lib/supabase';
 
 interface Utilisateur {
   id_utilisateur: string;
@@ -54,31 +55,57 @@ export default function EquipePage() {
     e.preventDefault();
     setFormMessage('Enregistrement... ⏳');
 
-    const data: any = { nom_prenom: nom, email, role };
-    // On n'envoie le mot de passe que s'il est rempli (pour ne pas l'écraser lors d'une modif)
-    if (motDePasse) data.mot_de_passe = motDePasse; 
-
     try {
-      const url = idEdit ? `${process.env.NEXT_PUBLIC_API_URL}/utilisateurs/${idEdit}` : process.env.NEXT_PUBLIC_API_URL + '/utilisateurs';
-      const method = idEdit ? 'PATCH' : 'POST';
+      if (!idEdit) {
+        // --- CAS 1 : CRÉATION D'UN NOUVEL EMPLOYÉ ---
+        
+        // Étape 1 : On crée le compte sécurisé dans Supabase Auth
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email: email,
+          password: motDePasse,
+        });
 
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
+        if (authError) {
+          throw new Error(`Erreur d'authentification : ${authError.message}`);
+        }
 
-      if (!res.ok) throw new Error("Erreur d'enregistrement");
+        // Étape 2 : Si Supabase a réussi, on crée le profil public via NestJS
+        const res = await fetch(process.env.NEXT_PUBLIC_API_URL + '/utilisateurs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          // Plus besoin d'envoyer le mot de passe à NestJS !
+          body: JSON.stringify({ nom_prenom: nom, email, role }), 
+        });
 
-      setFormMessage(idEdit ? '✅ Compte mis à jour !' : '✅ Collaborateur ajouté !');
+        if (!res.ok) throw new Error("Erreur d'enregistrement du profil");
+
+        setFormMessage('✅ Collaborateur ajouté !');
+
+      } else {
+        // --- CAS 2 : MODIFICATION D'UN EMPLOYÉ EXISTANT ---
+        
+        const data: any = { nom_prenom: nom, email, role };
+        // Si on veut modifier le mot de passe, il faudra utiliser supabase.auth.admin à l'avenir, 
+        // pour l'instant on modifie juste le profil :
+        
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/utilisateurs/${idEdit}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        });
+
+        if (!res.ok) throw new Error("Erreur lors de la modification");
+        setFormMessage('✅ Compte mis à jour !');
+      }
+
       resetForm();
       fetchUtilisateurs();
       setTimeout(() => setFormMessage(''), 3000);
+
     } catch (err: any) {
       setFormMessage(`❌ Erreur : ${err.message}`);
     }
   };
-
   const handleEdit = (u: Utilisateur) => {
     setIdEdit(u.id_utilisateur);
     setNom(u.nom_prenom);
