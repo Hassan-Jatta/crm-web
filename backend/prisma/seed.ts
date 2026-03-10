@@ -37,7 +37,6 @@ async function main() {
       marque: 'Nike / Jordan', 
       prix_unitaire: 180.00, 
       stock_disponible: 45,
-      image_url: 'https://images.unsplash.com/photo-1597045566677-8cf032ed6634?q=80&w=800&auto=format&fit=crop'
     },
   });
   const p2 = await prisma.produit.create({
@@ -46,7 +45,6 @@ async function main() {
       marque: 'Nike', 
       prix_unitaire: 120.00, 
       stock_disponible: 150,
-      image_url: 'https://images.unsplash.com/photo-1600269452121-4f2416e55c28?q=80&w=800&auto=format&fit=crop'
     },
   });
   const p3 = await prisma.produit.create({
@@ -55,7 +53,6 @@ async function main() {
       marque: 'Adidas', 
       prix_unitaire: 230.00, 
       stock_disponible: 12,
-      image_url: 'https://images.unsplash.com/photo-1608231387042-66d1773070a5?q=80&w=800&auto=format&fit=crop'
     },
   });
   console.log('✅ Produits ajoutés avec images');

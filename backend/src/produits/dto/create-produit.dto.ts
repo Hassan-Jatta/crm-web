@@ -13,9 +13,4 @@ export class CreateProduitDto {
   @IsOptional()
   @IsNumber()
   stock_disponible?: number;
-
-  // 🟢 Ajoute ces deux lignes pour l'image
-  @IsOptional()
-  @IsString()
-  image_url?: string; 
 }
